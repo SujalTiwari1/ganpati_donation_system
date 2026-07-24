@@ -1,0 +1,323 @@
+// =====================================================================
+// Ganpati Vargani Collection Management System — Prisma Schema
+// PostgreSQL (Neon) | Maps 1:1 to the DB design doc
+//
+// NOTE: A handful of PostgreSQL features used in the design doc have
+// no declarative equivalent in the Prisma schema language:
+//   - CHECK constraints (e.g. amount > 0, end_date >= start_date)
+//   - Partial / filtered indexes (e.g. WHERE deleted_at IS NULL)
+//   - The "single active festival" partial unique index
+//   - The auto-updated_at trigger (handled here via @updatedAt instead)
+//   - REVOKE UPDATE/DELETE on audit_logs (a DB-role/grant, not schema)
+// These are supplied as raw SQL in `manual-migration-additions.sql`,
+// meant to be pasted into the generated migration (see instructions
+// at the bottom of that file). This is standard practice for
+// production Prisma projects — the schema owns structure/relations/
+// indexes, migration SQL owns constraints Prisma can't express yet.
+// =====================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgcrypto, citext, pg_trgm]
+}
+
+// ---------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  VOLUNTEER
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+
+  @@map("user_status")
+}
+
+enum FestivalStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+
+  @@map("festival_status")
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+
+  @@map("payment_method")
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+
+  @@map("transaction_status")
+}
+
+enum WhatsappStatus {
+  NOT_SENT
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+
+  @@map("whatsapp_status")
+}
+
+enum EmailStatus {
+  NOT_SENT
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  NOT_APPLICABLE
+
+  @@map("email_status")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  RECEIPT_REGENERATE
+  STATUS_CHANGE
+
+  @@map("audit_action")
+}
+
+// ---------------------------------------------------------------------
+// User — volunteers and admins
+// ---------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String     @db.VarChar(150)
+  email        String     @unique @db.Citext
+  mobile       String     @unique @db.VarChar(15)
+  passwordHash String     @map("password_hash") @db.Text
+  role         UserRole   @default(VOLUNTEER)
+  status       UserStatus @default(ACTIVE)
+
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  transactions Transaction[] @relation("VolunteerTransactions")
+  auditLogs    AuditLog[]
+
+  @@index([status], map: "idx_users_status")
+  @@index([role], map: "idx_users_role")
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------
+// Festival — one yearly Ganpati cycle
+// ---------------------------------------------------------------------
+
+model Festival {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  year           Int            @unique @db.SmallInt
+  name           String         @db.VarChar(150)
+  startDate      DateTime       @map("start_date") @db.Date
+  endDate        DateTime       @map("end_date") @db.Date
+  status         FestivalStatus @default(DRAFT)
+  lastReceiptSeq Int            @default(0) @map("last_receipt_seq")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  transactions Transaction[]
+
+  @@index([status], map: "idx_festivals_status")
+  @@map("festivals")
+}
+
+// ---------------------------------------------------------------------
+// Building — normalized master list of societies/buildings
+// ---------------------------------------------------------------------
+
+model Building {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String  @db.VarChar(200)
+  normalizedName String  @unique @map("normalized_name") @db.VarChar(200)
+  area           String? @db.VarChar(150)
+  notes          String? @db.Text
+  isActive       Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  donors       Donor[]
+  transactions Transaction[]
+
+  @@index([area], map: "idx_buildings_area")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_buildings_name_trgm")
+  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_buildings_normalized_name_trgm")
+  @@map("buildings")
+}
+
+// ---------------------------------------------------------------------
+// Donor — personal identity of a donor, independent of donations
+// ---------------------------------------------------------------------
+
+model Donor {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String  @db.VarChar(150)
+  mobile     String  @db.VarChar(15)
+  email      String? @db.Citext
+  buildingId String  @map("building_id") @db.Uuid
+  roomNumber String  @map("room_number") @db.VarChar(20)
+  remarks    String? @db.Text
+
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  building     Building      @relation(fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  transactions Transaction[]
+
+  @@unique([mobile, buildingId, roomNumber], map: "uq_donors_mobile_building_room")
+  @@index([mobile], map: "idx_donors_mobile")
+  @@index([buildingId, roomNumber], map: "idx_donors_building_room")
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_donors_name_trgm")
+  @@map("donors")
+}
+
+// ---------------------------------------------------------------------
+// Transaction — one donation event (central fact table)
+// ---------------------------------------------------------------------
+
+model Transaction {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  festivalId  String @map("festival_id") @db.Uuid
+  donorId     String @map("donor_id") @db.Uuid
+  volunteerId String @map("volunteer_id") @db.Uuid
+  buildingId  String @map("building_id") @db.Uuid
+
+  receiptNumber String  @map("receipt_number") @db.VarChar(20)
+  roomNumber    String  @map("room_number") @db.VarChar(20)
+  amount        Decimal @db.Decimal(12, 2)
+
+  paymentMethod PaymentMethod     @map("payment_method")
+  status        TransactionStatus @default(CONFIRMED)
+
+  whatsappStatus WhatsappStatus @default(NOT_SENT) @map("whatsapp_status")
+  emailStatus    EmailStatus    @default(NOT_SENT) @map("email_status")
+
+  donationDate     DateTime @default(now()) @map("donation_date") @db.Date
+  receiptGenerated Boolean  @default(false) @map("receipt_generated")
+
+  isDuplicate              Boolean @default(false) @map("is_duplicate")
+  duplicateOfTransactionId String? @map("duplicate_of_transaction_id") @db.Uuid
+  duplicateOverrideReason  String? @map("duplicate_override_reason") @db.Text
+
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  festival  Festival @relation(fields: [festivalId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  donor     Donor    @relation(fields: [donorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  volunteer User     @relation("VolunteerTransactions", fields: [volunteerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  building  Building @relation(fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // Self-relation: this transaction may be flagged as a duplicate of an earlier one
+  duplicateOfTransaction Transaction?  @relation("TransactionDuplicates", fields: [duplicateOfTransactionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  flaggedDuplicates      Transaction[] @relation("TransactionDuplicates")
+
+  @@unique([festivalId, receiptNumber], map: "uq_transactions_festival_receipt")
+  @@index([receiptNumber], map: "idx_transactions_receipt_number")
+  @@index([festivalId, buildingId, roomNumber], map: "idx_transactions_dup_check")
+  @@index([festivalId, donationDate], map: "idx_transactions_festival_date")
+  @@index([volunteerId, festivalId], map: "idx_transactions_volunteer")
+  @@index([donorId], map: "idx_transactions_donor")
+  @@index([buildingId, festivalId], map: "idx_transactions_building")
+  @@index([festivalId, paymentMethod], map: "idx_transactions_payment_method")
+  @@index([status], map: "idx_transactions_status")
+  @@index([festivalId, whatsappStatus], map: "idx_transactions_whatsapp_status")
+  @@index([festivalId, emailStatus], map: "idx_transactions_email_status")
+  @@index([createdAt], map: "idx_transactions_created_at")
+  @@map("transactions")
+}
+
+// ---------------------------------------------------------------------
+// Settings — single-row Mandal-wide configuration
+// ---------------------------------------------------------------------
+
+model Settings {
+  id Int @id @default(1) @db.SmallInt
+
+  mandalName        String  @map("mandal_name") @db.VarChar(200)
+  address           String? @db.Text
+  phone             String? @db.VarChar(15)
+  email             String? @db.Citext
+  logoUrl           String? @map("logo_url") @db.Text
+  receiptPrefix     String  @default("") @map("receipt_prefix") @db.VarChar(20)
+  showVolunteerName Boolean @default(true) @map("show_volunteer_name")
+  enableWhatsapp    Boolean @default(true) @map("enable_whatsapp")
+  enableEmail       Boolean @default(true) @map("enable_email")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("settings")
+}
+
+// ---------------------------------------------------------------------
+// AuditLog — immutable, append-only activity ledger
+// ---------------------------------------------------------------------
+
+model AuditLog {
+  id       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String?     @map("user_id") @db.Uuid
+  action   AuditAction
+  entity   String      @db.VarChar(50)
+  entityId String?     @map("entity_id") @db.Uuid
+
+  oldValue Json? @map("old_value") @db.JsonB
+  newValue Json? @map("new_value") @db.JsonB
+
+  ipAddress String? @map("ip_address") @db.Inet
+  device    String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relation — SetNull so logs outlive a deleted actor account
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([entity, entityId], map: "idx_audit_logs_entity")
+  @@index([userId, createdAt], map: "idx_audit_logs_user")
+  @@index([createdAt], map: "idx_audit_logs_created_at")
+  @@index([action], map: "idx_audit_logs_action")
+  @@map("audit_logs")
+}
