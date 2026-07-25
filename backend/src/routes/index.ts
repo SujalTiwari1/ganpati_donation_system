@@ -1,11 +1,15 @@
 import { Router } from "express";
 import healthRoutes from "./health.route";
 import { authRoutes } from "../modules/auth";
+import { buildingRouter } from "../modules/buildings";
+import { transactionRouter } from "../modules/transactions";
 
 const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
+router.use("/buildings", buildingRouter);
+router.use("/transactions", transactionRouter);
 
 
 export default router;

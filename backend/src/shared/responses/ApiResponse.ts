@@ -30,4 +30,50 @@ export class ApiResponse {
       ...(meta ? { meta } : {}),
     });
   }
+
+  static success<T>(
+    res: Response,
+    data: T,
+    message: string,
+    statusCode?: number,
+    meta?: Record<string, unknown>
+  ): Response {
+    return this.send(res, { statusCode: statusCode ?? HTTP_STATUS.OK, message, data, meta });
+  }
+
+  static created<T>(
+    res: Response,
+    data: T,
+    message: string,
+    meta?: Record<string, unknown>
+  ): Response {
+    return this.success(res, data, message, HTTP_STATUS.CREATED, meta);
+  }
+
+  static updated<T>(
+    res: Response,
+    data: T,
+    message: string,
+    meta?: Record<string, unknown>
+  ): Response {
+    return this.success(res, data, message, HTTP_STATUS.OK, meta);
+  }
+
+  static deleted<T>(
+    res: Response,
+    data: T,
+    message: string,
+    meta?: Record<string, unknown>
+  ): Response {
+    return this.success(res, data, message, HTTP_STATUS.OK, meta);
+  }
+
+  static restored<T>(
+    res: Response,
+    data: T,
+    message: string,
+    meta?: Record<string, unknown>
+  ): Response {
+    return this.success(res, data, message, HTTP_STATUS.OK, meta);
+  }
 }

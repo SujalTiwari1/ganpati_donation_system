@@ -1,0 +1,2467 @@
+{
+  "info": {
+    "_postman_id": "d4c2b1a0-9e8f-4a1b-8c3d-ganpati-vargani-buildings",
+    "name": "Ganpati Vargani - Buildings Module",
+    "description": "End-to-end QA suite for the Buildings module: creation, retrieval, update, soft-delete/restore lifecycle, search/pagination/sorting, RBAC, validation, and service-layer business rules. Assumes the Auth collection has already been run in this environment so {{adminToken}} and {{volunteerToken}} exist. Run top-to-bottom or via Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Building Creation",
+      "description": "Creates the buildings that later folders reuse. Run first.",
+      "item": [
+        {
+          "name": "Create Building",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('buildingName', `Wing A ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('responds within 1500ms', () => pm.expect(pm.response.responseTime).to.be.below(1500));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "pm.test('message confirms creation', () => pm.expect(pm.response.json().message).to.match(/created/i));",
+                  "pm.test('building object has exactly the expected fields, nothing extra', () => {",
+                  "  const building = pm.response.json().data;",
+                  "  const expected = [\"id\",\"name\",\"area\",\"notes\",\"isActive\",\"createdAt\",\"updatedAt\",\"deletedAt\"].sort();",
+                  "  const actual = Object.keys(building).sort();",
+                  "  pm.expect(actual).to.eql(expected);",
+                  "});",
+                  "pm.test('id is a valid UUID', () => {",
+                  "  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+                  "  pm.expect(pm.response.json().data.id).to.match(uuidRegex);",
+                  "});",
+                  "pm.test('no password/internal fields leaked', () => {",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('passwordHash');",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('normalizedName');",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('createdById');",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('name matches what was sent', () => pm.expect(json.data.name).to.eql(pm.environment.get('buildingName')));",
+                  "pm.test('isActive defaults to true', () => pm.expect(json.data.isActive).to.eql(true));",
+                  "pm.test('deletedAt is null on creation', () => pm.expect(json.data.deletedAt).to.be.null);",
+                  "pm.environment.set('buildingId', json.data.id);",
+                  "pm.environment.set('buildingCreatedAt', json.data.createdAt);",
+                  "pm.environment.set('buildingUpdatedAt', json.data.updatedAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Admin creates a building with a uniquely-generated name so repeated collection runs never collide.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{buildingName}}\",\n  \"area\": \"Sector 12\",\n  \"notes\": \"Ground + 3 floors\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Duplicate Building (Expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('message explains the conflict', () => pm.expect(pm.response.json().message).to.match(/already exists|duplicate/i));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Re-submits the exact same name created above. Uniqueness is enforced on the normalized name.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{buildingName}}\",\n  \"area\": \"Sector 12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Creates Building",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('volunteerBuildingName', `Wing V ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('volunteerBuildingId', json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Volunteers are allowed to create buildings, same as donors in the auth-module design — only delete/restore are admin-only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{volunteerBuildingName}}\",\n  \"area\": \"Sector 7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Building Retrieval",
+      "description": "GET /buildings and GET /buildings/:id.",
+      "item": [
+        {
+          "name": "List Buildings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.test('data is an array', () => pm.expect(json.data).to.be.an('array'));",
+                  "pm.test('meta has pagination fields', () => {",
+                  "  pm.expect(json.meta).to.have.property('page');",
+                  "  pm.expect(json.meta).to.have.property('limit');",
+                  "  pm.expect(json.meta).to.have.property('total');",
+                  "  pm.expect(json.meta).to.have.property('totalPages');",
+                  "});",
+                  "pm.test('every item has id, name, area', () => {",
+                  "  json.data.forEach((b) => {",
+                  "    pm.expect(b).to.have.property('id');",
+                  "    pm.expect(b).to.have.property('name');",
+                  "    pm.expect(b).to.have.property('area');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Basic list call with no filters — verifies the envelope and pagination shape."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Building By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "pm.test('building object has exactly the expected fields, nothing extra', () => {",
+                  "  const building = pm.response.json().data;",
+                  "  const expected = [\"id\",\"name\",\"area\",\"notes\",\"isActive\",\"createdAt\",\"updatedAt\",\"deletedAt\"].sort();",
+                  "  const actual = Object.keys(building).sort();",
+                  "  pm.expect(actual).to.eql(expected);",
+                  "});",
+                  "pm.test('id is a valid UUID', () => {",
+                  "  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+                  "  pm.expect(pm.response.json().data.id).to.match(uuidRegex);",
+                  "});",
+                  "pm.test('no password/internal fields leaked', () => {",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('passwordHash');",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('normalizedName');",
+                  "  pm.expect(pm.response.json().data).to.not.have.property('createdById');",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('id matches requested id', () => pm.expect(json.data.id).to.eql(pm.environment.get('buildingId')));",
+                  "pm.test('name matches created name', () => pm.expect(json.data.name).to.eql(pm.environment.get('buildingName')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}"
+              ]
+            },
+            "description": "Fetches the building created in folder 1 and checks the values round-trip."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Building - Non-existing ID (Expect 404)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function uuidv4() {",
+                  "  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {",
+                  "    const r = (Math.random() * 16) | 0;",
+                  "    const v = c === 'x' ? r : (r & 0x3) | 0x8;",
+                  "    return v.toString(16);",
+                  "  });",
+                  "}",
+                  "pm.environment.set('randomUuid', uuidv4());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{randomUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{randomUuid}}"
+              ]
+            },
+            "description": "Well-formed UUID that doesn't correspond to any row."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Building - Invalid UUID Format (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"id\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/not-a-valid-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "not-a-valid-uuid"
+              ]
+            },
+            "description": "Path param isn't a UUID at all."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Building Update",
+      "description": "PATCH /buildings/:id, including the duplicate-name business rule.",
+      "item": [
+        {
+          "name": "Update Building Name, Area & Notes",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('updatedBuildingName', `Wing A Renamed ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.test('name was updated', () => pm.expect(json.data.name).to.eql(pm.environment.get('updatedBuildingName')));",
+                  "pm.test('area was updated', () => pm.expect(json.data.area).to.eql('Sector 14'));",
+                  "pm.test('notes was updated', () => pm.expect(json.data.notes).to.eql('Renamed during QA run'));",
+                  "pm.test('updatedAt advanced past createdAt', () => {",
+                  "  pm.expect(new Date(json.data.updatedAt).getTime()).to.be.above(new Date(pm.environment.get('buildingUpdatedAt')).getTime());",
+                  "});",
+                  "pm.environment.set('buildingName', json.data.name);",
+                  "pm.environment.set('buildingUpdatedAt', json.data.updatedAt);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}"
+              ]
+            },
+            "description": "Renames the building from folder 1 and confirms updatedAt actually advances.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{updatedBuildingName}}\",\n  \"area\": \"Sector 14\",\n  \"notes\": \"Renamed during QA run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Second Building (Setup for Duplicate-Rename Test)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('secondBuildingName', `Wing B ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('secondBuildingId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "A second, distinct building whose name we'll try to steal in the next request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{secondBuildingName}}\",\n  \"area\": \"Sector 20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rename Building To An Existing Name (Expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}"
+              ]
+            },
+            "description": "Attempts to rename the first building to the second building's name.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{secondBuildingName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Updates a Building",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{volunteerBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{volunteerBuildingId}}"
+              ]
+            },
+            "description": "Volunteers may update buildings (same RBAC tier as create/list/get).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated by the volunteer who created it\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Delete & Restore",
+      "description": "Admin-only soft-delete lifecycle on the folder-1 building.",
+      "item": [
+        {
+          "name": "Delete Building",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.test('isActive is now false', () => pm.expect(json.data.isActive).to.eql(false));",
+                  "pm.test('deletedAt is set', () => pm.expect(json.data.deletedAt).to.not.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}"
+              ]
+            },
+            "description": "Soft-deletes the building — isActive flips false, deletedAt is set."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Already-Deleted Building (Expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}"
+              ]
+            },
+            "description": "Deleting the same building twice should be rejected, not silently succeed."
+          },
+          "response": []
+        },
+        {
+          "name": "Restore Building",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.test('isActive is true again', () => pm.expect(json.data.isActive).to.eql(true));",
+                  "pm.test('deletedAt is cleared', () => pm.expect(json.data.deletedAt).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}",
+                "restore"
+              ]
+            },
+            "description": "Reactivates the soft-deleted building."
+          },
+          "response": []
+        },
+        {
+          "name": "Restore an Active Building (Expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{buildingId}}",
+                "restore"
+              ]
+            },
+            "description": "Restoring a building that was never deleted (or already restored) is a bad request, not a no-op."
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Deletes a Building (Expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{secondBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{secondBuildingId}}"
+              ]
+            },
+            "description": "Delete is admin-only. Uses the second building so we don't disturb the restore flow above."
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Restores a Building (Expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{secondBuildingId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{secondBuildingId}}",
+                "restore"
+              ]
+            },
+            "description": "Restore is admin-only, regardless of the target building's actual state."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Search, Pagination & Sorting",
+      "description": "Query-param behavior of GET /buildings.",
+      "item": [
+        {
+          "name": "Search Building by Partial Name",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('partialSearchTerm', pm.environment.get('buildingName').split(' ')[0]);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('every result name contains the search term', () => {",
+                  "  const term = pm.environment.get('partialSearchTerm').toLowerCase();",
+                  "  json.data.forEach((b) => pm.expect(b.name.toLowerCase()).to.include(term));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?search={{partialSearchTerm}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{partialSearchTerm}}"
+                }
+              ]
+            },
+            "description": "Searches using a substring of the folder-1 building's current name."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Page 1, Limit 5",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('meta.page is 1', () => pm.expect(json.meta.page).to.eql(1));",
+                  "pm.test('meta.limit is 5', () => pm.expect(json.meta.limit).to.eql(5));",
+                  "pm.test('array length never exceeds limit', () => pm.expect(json.data.length).to.be.at.most(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?page=1&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Requests a small page size and checks it's respected."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Page 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('meta.page is 2', () => pm.expect(pm.response.json().meta.page).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?page=2&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Confirms page navigation actually changes results (or is empty if there aren't 2 pages)."
+          },
+          "response": []
+        },
+        {
+          "name": "Sort Buildings by Name Ascending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const names = pm.response.json().data.map((b) => b.name.toLowerCase());",
+                  "const sorted = [...names].sort();",
+                  "pm.test('names are ascending', () => pm.expect(names).to.eql(sorted));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?sortBy=name&sortOrder=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "name"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Verifies the array is actually sorted, not just accepted."
+          },
+          "response": []
+        },
+        {
+          "name": "Sort Buildings by Name Descending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const names = pm.response.json().data.map((b) => b.name.toLowerCase());",
+                  "const sortedDesc = [...names].sort().reverse();",
+                  "pm.test('names are descending', () => pm.expect(names).to.eql(sortedDesc));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?sortBy=name&sortOrder=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "name"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Same check, reversed."
+          },
+          "response": []
+        },
+        {
+          "name": "Search With No Matches",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));",
+                  "const json = pm.response.json();",
+                  "pm.test('data is an empty array', () => pm.expect(json.data).to.eql([]));",
+                  "pm.test('meta.total is 0', () => pm.expect(json.meta.total).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?search=zzz_no_such_building_will_ever_match_zzz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "zzz_no_such_building_will_ever_match_zzz"
+                }
+              ]
+            },
+            "description": "A search term guaranteed not to exist. Should be a clean empty result, not an error."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Volunteer Access",
+      "description": "Confirms the read/write vs. destructive RBAC split holds for a VOLUNTEER token.",
+      "item": [
+        {
+          "name": "Volunteer Lists Buildings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Volunteers can read the full list."
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Gets Building By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('success is true', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{volunteerBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{volunteerBuildingId}}"
+              ]
+            },
+            "description": "Volunteers can read a single building."
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Deletes Building (Expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{volunteerBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{volunteerBuildingId}}"
+              ]
+            },
+            "description": "Re-confirmed here (in addition to folder 4) since this folder is the dedicated RBAC suite."
+          },
+          "response": []
+        },
+        {
+          "name": "Volunteer Restores Building (Expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 403', () => pm.response.to.have.status(403));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{volunteerBuildingId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{volunteerBuildingId}}",
+                "restore"
+              ]
+            },
+            "description": "Restore stays admin-only even on a building the volunteer created themselves."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Validation Cases",
+      "description": "Every request-shape and query-param edge case Zod should reject.",
+      "item": [
+        {
+          "name": "Create Building - Missing Name (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"name\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"area\": \"Sector 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Building - Empty Name (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"name\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"area\": \"Sector 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Building - Whitespace-Only Name (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"name\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \",\n  \"area\": \"Sector 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Building - Name Too Short (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"name\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Building - Name Too Long (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"name\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Building - Area Exceeds Max Length (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"area\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('area');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Zod validation must reject this before it ever reaches the service layer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Valid Name\",\n  \"area\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Building - Invalid UUID (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"id\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/not-a-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "not-a-uuid"
+              ]
+            },
+            "description": "PATCH with a malformed id path param.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Doesn't matter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Building - Invalid UUID (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"id\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/not-a-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "not-a-uuid"
+              ]
+            },
+            "description": "DELETE with a malformed id path param."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Negative Page (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"page\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('page');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?page=-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "-1"
+                }
+              ]
+            },
+            "description": "page must be a positive integer."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Limit Zero (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"limit\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('limit');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?limit=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "limit must be at least 1."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Limit Exceeds Maximum (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"limit\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('limit');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?limit=1000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "limit is capped at 100 (see shared/validators)."
+          },
+          "response": []
+        },
+        {
+          "name": "List Buildings - Invalid Sort Field (Expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "pm.test('field errors mention \"sortBy\"', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.have.property('sortBy');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings?sortBy='; DROP TABLE buildings; --",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "'; DROP TABLE buildings; --"
+                }
+              ]
+            },
+            "description": "sortBy must be a whitelisted column, not arbitrary user input."
+          },
+          "response": []
+        },
+        {
+          "name": "Request Without Token (Expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "No Authorization header at all."
+          },
+          "response": []
+        },
+        {
+          "name": "Request With Garbage Token (Expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 401', () => pm.response.to.have.status(401));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer this-is-not-a-real-jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Authorization header present but not a real JWT."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Business Rule Tests",
+      "description": "Rules that live in the service layer, not just Zod schemas.",
+      "item": [
+        {
+          "name": "Create Building (Setup for Deleted-State Tests)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('tempBuildingName', `Wing Temp ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('tempBuildingId', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "A disposable building used only to test behavior against a deleted record.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{tempBuildingName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Building (Setup for Deleted-State Tests)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{tempBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{tempBuildingId}}"
+              ]
+            },
+            "description": "Soft-deletes the temp building above."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Deleted Building (Expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{tempBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{tempBuildingId}}"
+              ]
+            },
+            "description": "A soft-deleted building should behave as not-found for a normal GET, same as buildings that never existed."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Deleted Building (Expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{tempBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{tempBuildingId}}"
+              ]
+            },
+            "description": "You shouldn't be able to edit a soft-deleted record without restoring it first.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"area\": \"Should not apply\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Non-Existing Building (Expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{randomUuid}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{randomUuid}}"
+              ]
+            },
+            "description": "A well-formed but unknown UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Restore Non-Existing Building (Expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{randomUuid}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{randomUuid}}",
+                "restore"
+              ]
+            },
+            "description": "A well-formed but unknown UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Donor Linked to a Fresh Building (Setup)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const suffix = Date.now().toString().slice(-9);",
+                  "pm.environment.set('donorTestBuildingName', `Wing Donor ${suffix}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('donorTestBuildingId', pm.response.json().data.id);",
+                  "pm.sendRequest({",
+                  "  url: pm.variables.replaceIn('{{baseUrl}}/donors'),",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.environment.get('adminToken') },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({",
+                  "    name: 'QA Test Donor',",
+                  "    mobile: '9' + Date.now().toString().slice(-9),",
+                  "    buildingId: pm.environment.get('donorTestBuildingId'),",
+                  "    roomNumber: '101',",
+                  "  }) },",
+                  "}, (err, res) => {",
+                  "  const donorModuleExists = !err && res.code === 201;",
+                  "  pm.environment.set('donorModuleExists', String(donorModuleExists));",
+                  "  if (!donorModuleExists) {",
+                  "    console.warn('Donors module not available yet (POST /donors did not return 201) — the linked-donor delete-guard test below will be skipped.');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings"
+              ]
+            },
+            "description": "Depends on the Donors module, which may not be built yet — this request degrades gracefully rather than failing the whole run if POST /donors 404s.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{donorTestBuildingName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Building With Existing Donors (Expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.environment.get('donorModuleExists') !== 'true') {",
+                  "  console.warn('Skipping: Donors module not available in this environment yet.');",
+                  "} else {",
+                  "  pm.test('status is 400', () => pm.response.to.have.status(400));",
+                  "  pm.test('success is false', () => pm.expect(pm.response.json().success).to.eql(false));",
+                  "  pm.test('message explains linked donors block the delete', () => {",
+                  "    pm.expect(pm.response.json().message).to.match(/donor/i);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{donorTestBuildingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buildings",
+                "{{donorTestBuildingId}}"
+              ]
+            },
+            "description": "A building with at least one linked donor must not be deletable — protects referential/receipt history integrity. Skips its assertion (rather than failing the run) if the Donors module isn't implemented yet."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

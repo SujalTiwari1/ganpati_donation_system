@@ -22,6 +22,7 @@ generator client {
 }
 
 datasource db {
+  
   provider   = "postgresql"
   extensions = [pgcrypto, citext, pg_trgm]
 }
@@ -131,6 +132,26 @@ model User {
   transactions Transaction[] @relation("VolunteerTransactions")
   auditLogs    AuditLog[]
 
+  // Donor audit relations
+  createdDonors Donor[] @relation("DonorCreatedBy")
+  updatedDonors Donor[] @relation("DonorUpdatedBy")
+  deletedDonors Donor[] @relation("DonorDeletedBy")
+
+  // Festival audit relations
+  createdFestivals Festival[] @relation("FestivalCreatedBy")
+  updatedFestivals Festival[] @relation("FestivalUpdatedBy")
+  deletedFestivals Festival[] @relation("FestivalDeletedBy")
+
+  // Transaction audit relations
+  createdTransactions  Transaction[] @relation("TransactionCreatedBy")
+  updatedTransactions  Transaction[] @relation("TransactionUpdatedBy")
+  deletedTransactions  Transaction[] @relation("TransactionDeletedBy")
+  restoredTransactions Transaction[] @relation("TransactionRestoredBy")
+
+  createdBuildings Building[] @relation("BuildingCreatedBy")
+  updatedBuildings Building[] @relation("BuildingUpdatedBy")
+  deletedBuildings Building[] @relation("BuildingDeletedBy")
+
   @@index([status], map: "idx_users_status")
   @@index([role], map: "idx_users_role")
   @@map("users")
@@ -149,11 +170,21 @@ model Festival {
   status         FestivalStatus @default(DRAFT)
   lastReceiptSeq Int            @default(0) @map("last_receipt_seq")
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  // Audit
+  createdById String  @map("created_by_id") @db.Uuid
+  updatedById String? @map("updated_by_id") @db.Uuid
+  deletedById String? @map("deleted_by_id") @db.Uuid
+
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   transactions Transaction[]
+
+  createdBy User  @relation("FestivalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User? @relation("FestivalUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("FestivalDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
   @@index([status], map: "idx_festivals_status")
   @@map("festivals")
@@ -164,26 +195,30 @@ model Festival {
 // ---------------------------------------------------------------------
 
 model Building {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name           String  @db.VarChar(200)
-  normalizedName String  @unique @map("normalized_name") @db.VarChar(200)
-  area           String? @db.VarChar(150)
-  notes          String? @db.Text
-  isActive       Boolean @default(true) @map("is_active")
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String @db.VarChar(200)
+  normalizedName String @unique @map("normalized_name") @db.VarChar(200)
 
+  area  String? @db.VarChar(150)
+  notes String? @db.Text
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdById String @map("created_by_id") @db.Uuid
+  updatedById String? @map("updated_by_id") @db.Uuid
+  deletedById String? @map("deleted_by_id") @db.Uuid
+
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Relations
-  donors       Donor[]
+  createdBy User @relation("BuildingCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("BuildingUpdatedBy", fields: [updatedById], references: [id])
+  deletedBy User? @relation("BuildingDeletedBy", fields: [deletedById], references: [id])
+
+  donors Donor[]
   transactions Transaction[]
-
-  @@index([area], map: "idx_buildings_area")
-  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_buildings_name_trgm")
-  @@index([normalizedName(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_buildings_normalized_name_trgm")
-  @@map("buildings")
 }
-
 // ---------------------------------------------------------------------
 // Donor — personal identity of a donor, independent of donations
 // ---------------------------------------------------------------------
@@ -197,6 +232,11 @@ model Donor {
   roomNumber String  @map("room_number") @db.VarChar(20)
   remarks    String? @db.Text
 
+  // Audit
+  createdById String  @map("created_by_id") @db.Uuid
+  updatedById String? @map("updated_by_id") @db.Uuid
+  deletedById String? @map("deleted_by_id") @db.Uuid
+
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -204,6 +244,10 @@ model Donor {
   // Relations
   building     Building      @relation(fields: [buildingId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   transactions Transaction[]
+
+  createdBy User  @relation("DonorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User? @relation("DonorUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("DonorDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
   @@unique([mobile, buildingId, roomNumber], map: "uq_donors_mobile_building_room")
   @@index([mobile], map: "idx_donors_mobile")
@@ -241,9 +285,17 @@ model Transaction {
   duplicateOfTransactionId String? @map("duplicate_of_transaction_id") @db.Uuid
   duplicateOverrideReason  String? @map("duplicate_override_reason") @db.Text
 
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  // Audit
+  createdById  String  @map("created_by_id") @db.Uuid
+  updatedById  String? @map("updated_by_id") @db.Uuid
+  deletedById  String? @map("deleted_by_id") @db.Uuid
+  restoredById String? @map("restored_by_id") @db.Uuid
+
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+  restoredAt DateTime? @map("restored_at") @db.Timestamptz
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   festival  Festival @relation(fields: [festivalId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -254,6 +306,11 @@ model Transaction {
   // Self-relation: this transaction may be flagged as a duplicate of an earlier one
   duplicateOfTransaction Transaction?  @relation("TransactionDuplicates", fields: [duplicateOfTransactionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   flaggedDuplicates      Transaction[] @relation("TransactionDuplicates")
+
+  createdBy  User  @relation("TransactionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy  User? @relation("TransactionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy  User? @relation("TransactionDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  restoredBy User? @relation("TransactionRestoredBy", fields: [restoredById], references: [id], onDelete: SetNull)
 
   @@unique([festivalId, receiptNumber], map: "uq_transactions_festival_receipt")
   @@index([receiptNumber], map: "idx_transactions_receipt_number")
