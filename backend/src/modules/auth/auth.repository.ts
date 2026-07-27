@@ -19,12 +19,12 @@ class AuthRepository {
     return prisma.user.findUnique({ where: { id } });
   }
 
-  create(data: Prisma.UserCreateInput): Promise<User> {
-    return prisma.user.create({ data });
+  create(data: Prisma.UserCreateInput, tx: Prisma.TransactionClient = prisma): Promise<User> {
+    return tx.user.create({ data });
   }
 
-  updateLastLogin(id: string): Promise<User> {
-    return prisma.user.update({
+  updateLastLogin(id: string, tx: Prisma.TransactionClient = prisma): Promise<User> {
+    return tx.user.update({
       where: { id },
       data: { lastLoginAt: new Date() },
     });

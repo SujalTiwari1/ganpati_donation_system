@@ -1,4 +1,4 @@
-import { UserStatus } from "@prisma/client";
+import { Prisma, UserStatus, AuditAction, AuditEntity } from "@prisma/client";
 import { authRepository } from "./auth.repository";
 import { auditService } from "../audit/audit.service";
 import { LoginInput, RegisterInput } from "./auth.schema";
@@ -7,13 +7,14 @@ import { LoginResult, SafeUser } from "./auth.types";
 import { UnauthorizedError, ConflictError } from "../../shared/errors";
 import { AUTH_MESSAGES } from "./auth.constants";
 import { logger } from "../../config/logger";
+import { prisma } from "../../database";
 
 class AuthService {
   /**
    * Login flow: validate credentials -> ensure account is ACTIVE ->
    * update lastLoginAt -> issue JWT.
    */
-  async login(input: LoginInput): Promise<LoginResult> {
+  async login(input: LoginInput, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
     const { email, password } = input;
 
     const user = await authRepository.findByEmail(email);
@@ -35,7 +36,24 @@ class AuthService {
       throw new UnauthorizedError(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    const updatedUser = await authRepository.updateLastLogin(user.id);
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updated = await authRepository.updateLastLogin(user.id, tx);
+
+      await auditService.record(
+        {
+          userId: updated.id,
+          entity: AuditEntity.AUTH,
+          action: AuditAction.LOGIN,
+          entityLabel: updated.email,
+          newValue: { lastLoginAt: updated.lastLoginAt },
+          ipAddress,
+          userAgent,
+        },
+        tx
+      );
+
+      return updated;
+    });
 
     const accessToken = generateAccessToken({
       userId: updatedUser.id,
@@ -53,7 +71,12 @@ class AuthService {
    * by route middleware). Ensures email/mobile uniqueness, hashes the
    * password, creates the user, and writes an audit log entry.
    */
-  async register(input: RegisterInput, createdById: string): Promise<SafeUser> {
+  async register(
+    input: RegisterInput,
+    createdById: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<SafeUser> {
     const { name, email, mobile, password, role } = input;
 
     const [existingByEmail, existingByMobile] = await Promise.all([
@@ -71,19 +94,36 @@ class AuthService {
 
     const passwordHash = await hashPassword(password);
 
-    const user = await authRepository.create({
-      name,
-      email,
-      mobile,
-      passwordHash,
-      role,
-    });
+    const user = await prisma.$transaction(async (tx) => {
+      const createdUser = await authRepository.create(
+        {
+          name,
+          email,
+          mobile,
+          passwordHash,
+          role,
+        },
+        tx
+      );
 
-    await auditService.record({
-      actorId: createdById,
-      action: "USER_CREATED",
-      targetId: user.id,
-      metadata: { role: user.role, email: user.email },
+      await auditService.record(
+        {
+          userId: createdById,
+          entity: AuditEntity.USER,
+          action: AuditAction.CREATE,
+          entityLabel: createdUser.name,
+          newValue: {
+            id: createdUser.id,
+            email: createdUser.email,
+            role: createdUser.role,
+          },
+          ipAddress,
+          userAgent,
+        },
+        tx
+      );
+
+      return createdUser;
     });
 
     logger.info("User created", { createdById, newUserId: user.id, role: user.role });
@@ -104,6 +144,26 @@ class AuthService {
     }
 
     return toSafeUser(user);
+  }
+
+  async logout(userId: string, ipAddress?: string, userAgent?: string): Promise<void> {
+    const user = await authRepository.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedError(AUTH_MESSAGES.UNAUTHENTICATED);
+    }
+
+    await auditService.record(
+      {
+        userId: user.id,
+        entity: AuditEntity.AUTH,
+        action: AuditAction.LOGOUT,
+        entityLabel: user.email,
+        oldValue: { lastLoginAt: user.lastLoginAt },
+        ipAddress,
+        userAgent,
+      }
+    );
   }
 }
 

@@ -44,10 +44,11 @@ async findByNormalizedName(
 
 }
 async create(
-    data: Prisma.BuildingUncheckedCreateInput
+    data: Prisma.BuildingUncheckedCreateInput,
+    tx: Prisma.TransactionClient = prisma
 ): Promise<Building> {
 
-    return prisma.building.create({
+    return tx.building.create({
 
         data,
 
@@ -55,14 +56,12 @@ async create(
 
 }
 async update(
-
     id: string,
-
-    data: Prisma.BuildingUpdateInput
-
+    data: Prisma.BuildingUncheckedUpdateInput,
+    tx: Prisma.TransactionClient = prisma
 ): Promise<Building> {
 
-    return prisma.building.update({
+    return tx.building.update({
 
         where: {
             id,
@@ -75,10 +74,11 @@ async update(
 }
 async softDelete(
     id: string,
-    deletedById: string
+    deletedById: string,
+    tx: Prisma.TransactionClient = prisma
 ): Promise<Building> {
 
-    return prisma.building.update({
+    return tx.building.update({
 
         where: {
             id,

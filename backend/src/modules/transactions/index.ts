@@ -7,5 +7,5 @@ export type {
     CreateTransactionInput,
     UpdateTransactionInput,
     TransactionListQuery,
-    PaginatedTransactions,
-} from "./transaction.types";
+} from "./transaction.schema";
+export type { PaginatedTransactions } from "./transaction.types";

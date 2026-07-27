@@ -1,6 +1,8 @@
-import { Prisma, type Building } from "@prisma/client";
+import { AuditAction, AuditEntity, Prisma, type Building } from "@prisma/client";
 
 import { logger } from "../../config";
+
+import { prisma } from "../../database";
 
 import {
     BadRequestError,
@@ -13,6 +15,8 @@ import { normalizeBuildingName } from "./building.utils";
 import {
     BUILDING_MESSAGES,
 } from "./building.constants";
+
+import { auditService } from "../audit/audit.service";
 
 import type {
     BuildingListQuery,
@@ -35,7 +39,9 @@ export class BuildingService {
     //public methods
     async create(
     input: CreateBuildingInput,
-    currentUserId: string
+    currentUserId: string,
+    ipAddress?: string,
+    userAgent?: string
 ): Promise<Building> {
 
     const normalizedName =
@@ -47,25 +53,40 @@ export class BuildingService {
         normalizedName
     );
 
-    const building =
-        await this.repository.create({
-            name: input.name.trim(),
-            normalizedName,
-            area: input.area?.trim() || null,
-            notes: input.notes?.trim() || null,
-            createdById: currentUserId, // FIX: was missing — createdById is a required column with no default
-        });
-    
+    const building = await prisma.$transaction(async (tx) => {
+        const created = await this.repository.create(
+            {
+                name: input.name.trim(),
+                normalizedName,
+                area: input.area?.trim() || null,
+                notes: input.notes?.trim() || null,
+                createdById: currentUserId,
+            },
+            tx
+        );
+
+        await auditService.record(
+            {
+                userId: currentUserId,
+                entity: AuditEntity.BUILDING,
+                action: AuditAction.CREATE,
+                entityId: created.id,
+                entityLabel: created.name,
+                newValue: JSON.parse(JSON.stringify(created)),
+                ipAddress,
+                userAgent,
+            },
+            tx
+        );
+
+        return created;
+    });
+
     logger.info(
         "Building created successfully",
         {
-
-            buildingId:
-                building.id,
-
-            createdBy:
-                currentUserId,
-
+            buildingId: building.id,
+            createdBy: currentUserId,
         }
     );
 
@@ -97,20 +118,18 @@ async list(
 async update(
     id: string,
     input: UpdateBuildingInput,
-    currentUserId: string
+    currentUserId: string,
+    ipAddress?: string,
+    userAgent?: string
 ): Promise<Building> {
+    const building = await this.getBuildingOrThrow(id);
 
-    const building =
-        await this.getBuildingOrThrow(id);
-
-    const data: Prisma.BuildingUpdateInput = {
+    const data: Prisma.BuildingUncheckedUpdateInput = {
         updatedById: currentUserId, // FIX: was never set — every update silently left this null
     };
 
     if (input.name !== undefined) {
-
-        const normalizedName =
-            normalizeBuildingName(input.name);
+        const normalizedName = normalizeBuildingName(input.name);
 
         await this.ensureUniqueName(
             normalizedName,
@@ -129,11 +148,26 @@ async update(
         data.notes = input.notes?.trim() || null;
     }
 
-    const updated =
-        await this.repository.update(
-            building.id,
-            data
+    const updated = await prisma.$transaction(async (tx) => {
+        const result = await this.repository.update(building.id, data, tx);
+
+        await auditService.record(
+            {
+                userId: currentUserId,
+                entity: AuditEntity.BUILDING,
+                action: AuditAction.UPDATE,
+                entityId: result.id,
+                entityLabel: result.name,
+                oldValue: JSON.parse(JSON.stringify(building)),
+                newValue: JSON.parse(JSON.stringify(result)),
+                ipAddress,
+                userAgent,
+            },
+            tx
         );
+
+        return result;
+    });
 
     logger.info("Building updated", {
         buildingId: updated.id,
@@ -144,7 +178,9 @@ async update(
 }
 async delete(
     id: string,
-    currentUserId: string
+    currentUserId: string,
+    ipAddress?: string,
+    userAgent?: string
 ): Promise<Building> {
 
     const building =
@@ -152,8 +188,25 @@ async delete(
 
     await this.ensureCanDelete(id);
 
-    const deleted =
-        await this.repository.softDelete(building.id, currentUserId); // FIX: pass currentUserId through
+    const deleted = await prisma.$transaction(async (tx) => {
+        const result = await this.repository.softDelete(building.id, currentUserId, tx);
+
+        await auditService.record(
+            {
+                userId: currentUserId,
+                entity: AuditEntity.BUILDING,
+                action: AuditAction.DELETE,
+                entityId: result.id,
+                entityLabel: result.name,
+                oldValue: JSON.parse(JSON.stringify(building)),
+                ipAddress,
+                userAgent,
+            },
+            tx
+        );
+
+        return result;
+    });
 
     logger.info("Building deleted", {
         buildingId: deleted.id,

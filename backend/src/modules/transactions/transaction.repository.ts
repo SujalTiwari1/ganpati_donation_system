@@ -50,16 +50,20 @@ export class TransactionRepository {
         });
     }
 
-    async update(id: string, data: Prisma.TransactionUpdateInput) {
-        return prisma.transaction.update({
+    async update(
+        id: string,
+        data: Prisma.TransactionUpdateInput,
+        tx: Prisma.TransactionClient = prisma
+    ) {
+        return tx.transaction.update({
             where: { id },
             data,
             include: WITH_RELATIONS,
         });
     }
 
-    async cancel(id: string) {
-        return prisma.transaction.update({
+    async cancel(id: string, tx: Prisma.TransactionClient = prisma) {
+        return tx.transaction.update({
             where: { id },
             data: { status: TransactionStatus.CANCELLED },
             include: WITH_RELATIONS,

@@ -1,4 +1,4 @@
-import { Prisma, TransactionStatus } from "@prisma/client";
+import { AuditAction, AuditEntity, Prisma, TransactionStatus } from "@prisma/client";
 
 import { prisma } from "../../database";
 import { logger } from "../../config";
@@ -14,6 +14,7 @@ import {
     RECEIPT_SEQ_PAD_LENGTH,
     TRANSACTION_MESSAGES,
 } from "./transaction.constants";
+import { auditService } from "../audit/audit.service";
 import { TransactionRepository, transactionRepository } from "./transaction.repository";
 import type {
     CreateTransactionInput,
@@ -26,7 +27,12 @@ export class TransactionService {
         private readonly repository: TransactionRepository = transactionRepository
     ) {}
 
-    async create(input: CreateTransactionInput, currentUserId: string) {
+    async create(
+        input: CreateTransactionInput,
+        currentUserId: string,
+        ipAddress?: string,
+        userAgent?: string
+    ) {
         const buildingId = await this.resolveBuildingId(input);
         await this.ensureBuildingExists(buildingId);
 
@@ -75,6 +81,20 @@ export class TransactionService {
                 tx
             );
 
+            await auditService.record(
+                {
+                    userId: currentUserId,
+                    entity: AuditEntity.TRANSACTION,
+                    action: AuditAction.CREATE,
+                    entityId: transaction.id,
+                    entityLabel: transaction.receiptNumber,
+                    newValue: JSON.parse(JSON.stringify(transaction)),
+                    ipAddress,
+                    userAgent,
+                },
+                tx
+            );
+
             logger.info("Transaction created", {
                 transactionId: transaction.id,
                 receiptNumber: transaction.receiptNumber,
@@ -108,7 +128,13 @@ export class TransactionService {
         };
     }
 
-    async update(id: string, input: UpdateTransactionInput, currentUserId: string) {
+    async update(
+        id: string,
+        input: UpdateTransactionInput,
+        currentUserId: string,
+        ipAddress?: string,
+        userAgent?: string
+    ) {
         const transaction = await this.ensureTransactionExists(id);
         this.ensureEditable(transaction.status);
 
@@ -122,38 +148,73 @@ export class TransactionService {
             data.roomNumber = input.roomNumber;
         }
 
-        if (input.donorName !== undefined) {
-            // Donor has no standalone API, but its name is still editable
-            // as a side effect of correcting a transaction — mobile is
-            // deliberately NOT editable here, since mobile+building+room
-            // is the donor's identity; changing it means "this is actually
-            // a different donor," which should go through cancel + recreate.
-            await prisma.donor.update({
-                where: { id: transaction.donorId },
-                data: { name: input.donorName },
-            });
-        }
+        const updated = await prisma.$transaction(async (tx) => {
+            if (input.donorName !== undefined) {
+                await tx.donor.update({
+                    where: { id: transaction.donorId },
+                    data: { name: input.donorName },
+                });
+            }
 
-        const updated = await this.repository.update(id, data);
+            const result = await this.repository.update(id, data, tx);
+
+            await auditService.record(
+                {
+                    userId: currentUserId,
+                    entity: AuditEntity.TRANSACTION,
+                    action: AuditAction.UPDATE,
+                    entityId: result.id,
+                    entityLabel: result.receiptNumber,
+                    oldValue: JSON.parse(JSON.stringify(transaction)),
+                    newValue: JSON.parse(JSON.stringify(result)),
+                    ipAddress,
+                    userAgent,
+                },
+                tx
+            );
+
+            return result;
+        });
 
         logger.info("Transaction updated", { transactionId: id, updatedBy: currentUserId });
 
         return updated;
     }
 
-    async cancel(id: string, currentUserId: string) {
+    async cancel(
+        id: string,
+        currentUserId: string,
+        ipAddress?: string,
+        userAgent?: string
+    ) {
         const transaction = await this.ensureTransactionExists(id);
 
         if (transaction.status === TransactionStatus.CANCELLED) {
             throw new BadRequestError(TRANSACTION_MESSAGES.ALREADY_CANCELLED);
         }
 
-        const cancelled = await this.repository.cancel(id);
+        const cancelled = await prisma.$transaction(async (tx) => {
+            const result = await this.repository.cancel(id, tx);
+
+            await auditService.record(
+                {
+                    userId: currentUserId,
+                    entity: AuditEntity.TRANSACTION,
+                    action: AuditAction.STATUS_CHANGE,
+                    entityId: result.id,
+                    entityLabel: result.receiptNumber,
+                    oldValue: { status: transaction.status },
+                    newValue: { status: result.status },
+                    ipAddress,
+                    userAgent,
+                },
+                tx
+            );
+
+            return result;
+        });
 
         logger.info("Transaction cancelled", { transactionId: id, cancelledBy: currentUserId });
-        // NOTE: Transaction has no cancelledById column in the current schema.
-        // If that's ever added, this is the one line that needs to change.
-
         return cancelled;
     }
 

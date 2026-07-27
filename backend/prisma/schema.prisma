@@ -22,7 +22,6 @@ generator client {
 }
 
 datasource db {
-  
   provider   = "postgresql"
   extensions = [pgcrypto, citext, pg_trgm]
 }
@@ -107,6 +106,14 @@ enum AuditAction {
   STATUS_CHANGE
 
   @@map("audit_action")
+}
+
+enum AuditEntity {
+  AUTH
+  BUILDING
+  TRANSACTION
+  SETTINGS
+  USER
 }
 
 // ---------------------------------------------------------------------
@@ -204,21 +211,22 @@ model Building {
 
   isActive Boolean @default(true) @map("is_active")
 
-  createdById String @map("created_by_id") @db.Uuid
+  createdById String  @map("created_by_id") @db.Uuid
   updatedById String? @map("updated_by_id") @db.Uuid
   deletedById String? @map("deleted_by_id") @db.Uuid
 
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  createdBy User @relation("BuildingCreatedBy", fields: [createdById], references: [id])
+  createdBy User  @relation("BuildingCreatedBy", fields: [createdById], references: [id])
   updatedBy User? @relation("BuildingUpdatedBy", fields: [updatedById], references: [id])
   deletedBy User? @relation("BuildingDeletedBy", fields: [deletedById], references: [id])
 
-  donors Donor[]
+  donors       Donor[]
   transactions Transaction[]
 }
+
 // ---------------------------------------------------------------------
 // Donor — personal identity of a donor, independent of donations
 // ---------------------------------------------------------------------
@@ -355,26 +363,34 @@ model Settings {
 // ---------------------------------------------------------------------
 
 model AuditLog {
-  id       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId   String?     @map("user_id") @db.Uuid
-  action   AuditAction
-  entity   String      @db.VarChar(50)
-  entityId String?     @map("entity_id") @db.Uuid
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String? @map("user_id") @db.Uuid
+
+  entity AuditEntity
+
+  action AuditAction
+
+  entityId String? @map("entity_id") @db.Uuid
+
+  entityLabel String? @map("entity_label") @db.VarChar(255)
 
   oldValue Json? @map("old_value") @db.JsonB
+
   newValue Json? @map("new_value") @db.JsonB
 
   ipAddress String? @map("ip_address") @db.Inet
-  device    String? @db.Text
+
+  userAgent String? @map("user_agent") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  // Relation — SetNull so logs outlive a deleted actor account
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([entity, entityId], map: "idx_audit_logs_entity")
+  @@index([entityLabel], map: "idx_audit_logs_entity_label")
+  @@index([action], map: "idx_audit_logs_action")
   @@index([userId, createdAt], map: "idx_audit_logs_user")
   @@index([createdAt], map: "idx_audit_logs_created_at")
-  @@index([action], map: "idx_audit_logs_action")
   @@map("audit_logs")
 }
