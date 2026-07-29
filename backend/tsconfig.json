@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "ignoreDeprecations": "5.0",
     "target": "ES2022",
 
     "rootDir": "./src",
