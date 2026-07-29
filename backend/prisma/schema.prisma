@@ -77,9 +77,12 @@ enum TransactionStatus {
 enum WhatsappStatus {
   NOT_SENT
   QUEUED
+  PENDING
   SENT
   DELIVERED
+  READ
   FAILED
+  SKIPPED
 
   @@map("whatsapp_status")
 }
@@ -283,8 +286,14 @@ model Transaction {
   paymentMethod PaymentMethod     @map("payment_method")
   status        TransactionStatus @default(CONFIRMED)
 
-  whatsappStatus WhatsappStatus @default(NOT_SENT) @map("whatsapp_status")
+  whatsappStatus WhatsappStatus @default(PENDING) @map("whatsapp_status")
   emailStatus    EmailStatus    @default(NOT_SENT) @map("email_status")
+
+  providerMessageId     String?   @map("provider_message_id") @db.Text
+  providerMediaId       String?   @map("provider_media_id") @db.Text
+  whatsappDeliveredAt   DateTime? @map("whatsapp_delivered_at") @db.Timestamptz
+  whatsappReadAt        DateTime? @map("whatsapp_read_at") @db.Timestamptz
+  whatsappFailureReason String?   @map("whatsapp_failure_reason") @db.Text
 
   donationDate     DateTime @default(now()) @map("donation_date") @db.Date
   receiptGenerated Boolean  @default(false) @map("receipt_generated")

@@ -1,0 +1,348 @@
+/* =====================================================================
+   Samarthnagar Mitra Mandal — Donation Receipt
+   Design tokens
+   ===================================================================== */
+:root {
+  --primary: #3e2472;        /* ribbon, amount, "thank you" text */
+  --primary-dark: #2b1852;
+  --gold: #c8890f;           /* ornaments, pin icon */
+  --gold-light: #e0a83e;
+  --maroon: #7c1f1f;         /* organisation name */
+  --text: #222222;
+  --text-muted: #4a4a4a;
+  --divider: #e6dcc8;        /* dashed rules between detail rows */
+  --bg: #fffdf8;             /* page background */
+
+  --font-en: "Poppins", "Segoe UI", sans-serif;
+  --font-mr: "Noto Sans Devanagari", "Poppins", sans-serif;
+
+  /* Page frame — keeps content clear of the decorative border/ornaments
+     baked into receipt-background.png. */
+  --frame-inset-y: 30mm;
+  --frame-inset-x: 24mm;
+}
+
+/* =====================================================================
+   Reset + page setup
+   ===================================================================== */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-en);
+  -webkit-font-smoothing: antialiased;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.mr {
+  font-family: var(--font-mr);
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+/* =====================================================================
+   Page shell
+   receipt-background.png is a single full-bleed asset (border + top/
+   bottom ornaments + Ganpati watermark). It is stretched to exactly
+   cover the A4 page and always stays behind the content layer.
+   ===================================================================== */
+.receipt-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.receipt-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  z-index: 0;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.receipt-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: var(--frame-inset-y) var(--frame-inset-x);
+  display: flex;
+  flex-direction: column;
+}
+
+/* =====================================================================
+   Header — logo, org name and address stacked and centered
+   ===================================================================== */
+.receipt-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2mm;
+  padding-bottom: 6mm;
+}
+
+.logo {
+  width: 40mm;
+  height: 40mm;
+  object-fit: contain;
+  margin-bottom: 2mm;
+}
+
+.org-name {
+  margin: 0;
+  color: var(--maroon);
+  font-weight: 700;
+  font-size: 26pt;
+  line-height: 1.25;
+}
+
+.org-name span {
+  display: block;
+}
+
+.org-address {
+  margin: 1mm 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2mm;
+  font-size: 11.5pt;
+  color: var(--text);
+}
+
+.pin-icon {
+  font-size: 11pt;
+}
+
+/* =====================================================================
+   Ornament divider — reused above the footer note
+   ===================================================================== */
+.ornament-divider {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin: 0 auto;
+  max-width: 90mm;
+}
+.ornament-divider__line {
+  flex: 1;
+  height: 0;
+  border-top: 1.5px dashed var(--gold);
+}
+.ornament-divider__glyph {
+  color: var(--gold);
+  font-size: 10pt;
+  line-height: 1;
+}
+.ornament-divider--footer {
+  max-width: 70mm;
+  margin: 7mm auto 0;
+}
+
+/* =====================================================================
+   Ribbon — built with clip-path, not an image
+   ===================================================================== */
+.ribbon {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  margin: 9mm 0 10mm;
+  height: 14mm;
+  flex-shrink: 0;
+}
+
+.ribbon__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92mm;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16pt;
+  letter-spacing: 0.3px;
+  clip-path: polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
+}
+
+.ribbon__tail {
+  width: 6mm;
+  align-self: center;
+  height: 10mm;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+}
+.ribbon__tail--left {
+  clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
+  margin-right: -3mm;
+}
+.ribbon__tail--right {
+  clip-path: polygon(100% 0%, 0% 50%, 100% 100%);
+  margin-left: -3mm;
+}
+
+/* =====================================================================
+   Receipt details
+   ===================================================================== */
+.receipt-details {
+  padding: 0 2mm;
+}
+
+.details-row {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  padding: 5mm 0;
+  border-bottom: 1px dashed var(--divider);
+}
+.details-row--last {
+  border-bottom: none;
+}
+
+.details-row--split {
+  justify-content: flex-start;
+  gap: 14mm;
+}
+.detail--compact {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  min-width: 0;
+}
+
+.detail-label {
+  flex: 0 0 44mm;
+  color: var(--text-muted);
+  font-size: 12.5pt;
+  font-weight: 500;
+}
+.detail-label--short {
+  flex-basis: 16mm;
+}
+
+.detail-colon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.detail-value {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 13pt;
+  color: #1a1a1a;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.detail-value--amount {
+  font-size: 22pt;
+  color: var(--primary);
+  padding: 1mm 0;
+}
+.rupee {
+  font-size: 17pt;
+  margin-right: 1.5mm;
+}
+
+/* =====================================================================
+   Thank-you section
+   ===================================================================== */
+.thank-you {
+  text-align: center;
+  margin-top: 9mm;
+}
+
+.thank-you__mr {
+  margin: 0 0 2mm;
+  color: var(--primary);
+  font-size: 13pt;
+}
+
+.thank-you__en {
+  margin: 0 0 4mm;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 14.5pt;
+}
+
+.thank-you__slogan {
+  margin: 0;
+  color: #c1401f;
+  font-weight: 700;
+  font-size: 14.5pt;
+}
+
+/* =====================================================================
+   Footer
+   ===================================================================== */
+.receipt-footer {
+  margin-top: auto;
+  text-align: center;
+}
+
+.footer-note {
+  margin: 3mm 0 0;
+  font-size: 9pt;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* =====================================================================
+   Screen-only development shadow
+   Visible while previewing in a browser; stripped for print/PDF so
+   Puppeteer output has a clean page edge.
+   ===================================================================== */
+@media screen {
+  body {
+    background: #e9e9e9;
+    padding: 10mm 0;
+  }
+  .receipt-page {
+    box-shadow: 0 2mm 8mm rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* =====================================================================
+   Print rules
+   ===================================================================== */
+@media print {
+  html,
+  body {
+    width: 210mm;
+    height: 297mm;
+    background: var(--bg);
+    padding: 0;
+  }
+
+  .receipt-page {
+    box-shadow: none;
+    margin: 0;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
