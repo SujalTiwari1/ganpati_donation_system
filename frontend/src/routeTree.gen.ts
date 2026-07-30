@@ -9,13 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AnalyticsIndexRouteImport } from './routes/analytics/index'
+import { Route as AuditLogsIndexRouteImport } from './routes/audit-logs/index'
+import { Route as BuildingsIndexRouteImport } from './routes/buildings/index'
+import { Route as BuildingsIdRouteImport } from './routes/buildings/$id'
+import { Route as DonorsIndexRouteImport } from './routes/donors/index'
+import { Route as ProfileIndexRouteImport } from './routes/profile/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as TransactionsIndexRouteImport } from './routes/transactions/index'
+import { Route as TransactionsIdRouteImport } from './routes/transactions/$id'
+import { Route as TransactionsNewRouteImport } from './routes/transactions/new'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -23,9 +33,59 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsIndexRoute = AnalyticsIndexRouteImport.update({
+  id: '/analytics/',
+  path: '/analytics/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditLogsIndexRoute = AuditLogsIndexRouteImport.update({
+  id: '/audit-logs/',
+  path: '/audit-logs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuildingsIndexRoute = BuildingsIndexRouteImport.update({
+  id: '/buildings/',
+  path: '/buildings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuildingsIdRoute = BuildingsIdRouteImport.update({
+  id: '/buildings/$id',
+  path: '/buildings/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DonorsIndexRoute = DonorsIndexRouteImport.update({
+  id: '/donors/',
+  path: '/donors/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransactionsIndexRoute = TransactionsIndexRouteImport.update({
+  id: '/transactions/',
+  path: '/transactions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransactionsIdRoute = TransactionsIdRouteImport.update({
+  id: '/transactions/$id',
+  path: '/transactions/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransactionsNewRoute = TransactionsNewRouteImport.update({
+  id: '/transactions/new',
+  path: '/transactions/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -33,39 +93,119 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/buildings/$id': typeof BuildingsIdRoute
+  '/transactions/$id': typeof TransactionsIdRoute
+  '/transactions/new': typeof TransactionsNewRoute
+  '/analytics/': typeof AnalyticsIndexRoute
+  '/audit-logs/': typeof AuditLogsIndexRoute
+  '/buildings/': typeof BuildingsIndexRoute
+  '/donors/': typeof DonorsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/transactions/': typeof TransactionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/buildings/$id': typeof BuildingsIdRoute
+  '/transactions/$id': typeof TransactionsIdRoute
+  '/transactions/new': typeof TransactionsNewRoute
+  '/analytics': typeof AnalyticsIndexRoute
+  '/audit-logs': typeof AuditLogsIndexRoute
+  '/buildings': typeof BuildingsIndexRoute
+  '/donors': typeof DonorsIndexRoute
+  '/profile': typeof ProfileIndexRoute
+  '/settings': typeof SettingsIndexRoute
+  '/transactions': typeof TransactionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/buildings/$id': typeof BuildingsIdRoute
+  '/transactions/$id': typeof TransactionsIdRoute
+  '/transactions/new': typeof TransactionsNewRoute
+  '/analytics/': typeof AnalyticsIndexRoute
+  '/audit-logs/': typeof AuditLogsIndexRoute
+  '/buildings/': typeof BuildingsIndexRoute
+  '/donors/': typeof DonorsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/transactions/': typeof TransactionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/buildings/$id'
+    | '/transactions/$id'
+    | '/transactions/new'
+    | '/analytics/'
+    | '/audit-logs/'
+    | '/buildings/'
+    | '/donors/'
+    | '/profile/'
+    | '/settings/'
+    | '/transactions/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login'
-  id: '__root__' | '/' | '/dashboard' | '/login'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/buildings/$id'
+    | '/transactions/$id'
+    | '/transactions/new'
+    | '/analytics'
+    | '/audit-logs'
+    | '/buildings'
+    | '/donors'
+    | '/profile'
+    | '/settings'
+    | '/transactions'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/buildings/$id'
+    | '/transactions/$id'
+    | '/transactions/new'
+    | '/analytics/'
+    | '/audit-logs/'
+    | '/buildings/'
+    | '/donors/'
+    | '/profile/'
+    | '/settings/'
+    | '/transactions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  BuildingsIdRoute: typeof BuildingsIdRoute
+  TransactionsIdRoute: typeof TransactionsIdRoute
+  TransactionsNewRoute: typeof TransactionsNewRoute
+  AnalyticsIndexRoute: typeof AnalyticsIndexRoute
+  AuditLogsIndexRoute: typeof AuditLogsIndexRoute
+  BuildingsIndexRoute: typeof BuildingsIndexRoute
+  DonorsIndexRoute: typeof DonorsIndexRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+  TransactionsIndexRoute: typeof TransactionsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -75,11 +215,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics/': {
+      id: '/analytics/'
+      path: '/analytics'
+      fullPath: '/analytics/'
+      preLoaderRoute: typeof AnalyticsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit-logs/': {
+      id: '/audit-logs/'
+      path: '/audit-logs'
+      fullPath: '/audit-logs/'
+      preLoaderRoute: typeof AuditLogsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/buildings/': {
+      id: '/buildings/'
+      path: '/buildings'
+      fullPath: '/buildings/'
+      preLoaderRoute: typeof BuildingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/buildings/$id': {
+      id: '/buildings/$id'
+      path: '/buildings/$id'
+      fullPath: '/buildings/$id'
+      preLoaderRoute: typeof BuildingsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/donors/': {
+      id: '/donors/'
+      path: '/donors'
+      fullPath: '/donors/'
+      preLoaderRoute: typeof DonorsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/': {
+      id: '/transactions/'
+      path: '/transactions'
+      fullPath: '/transactions/'
+      preLoaderRoute: typeof TransactionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/$id': {
+      id: '/transactions/$id'
+      path: '/transactions/$id'
+      fullPath: '/transactions/$id'
+      preLoaderRoute: typeof TransactionsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transactions/new': {
+      id: '/transactions/new'
+      path: '/transactions/new'
+      fullPath: '/transactions/new'
+      preLoaderRoute: typeof TransactionsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -89,7 +299,27 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  BuildingsIdRoute: BuildingsIdRoute,
+  TransactionsIdRoute: TransactionsIdRoute,
+  TransactionsNewRoute: TransactionsNewRoute,
+  AnalyticsIndexRoute: AnalyticsIndexRoute,
+  AuditLogsIndexRoute: AuditLogsIndexRoute,
+  BuildingsIndexRoute: BuildingsIndexRoute,
+  DonorsIndexRoute: DonorsIndexRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+  TransactionsIndexRoute: TransactionsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

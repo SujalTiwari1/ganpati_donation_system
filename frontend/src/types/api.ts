@@ -87,6 +87,8 @@ export interface Transaction {
   updatedAt?: string;
   donor: Donor;
   building: Pick<Building, "id" | "name">;
+  isDuplicate?: boolean;
+  duplicateOverrideReason?: string | null;
 }
 
 export interface DashboardSummary {
