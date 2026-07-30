@@ -1,37 +1,65 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import puppeteer, { PDFOptions } from 'puppeteer';
 
 interface GeneratePdfOptions {
   html: string;
   cssPath: string;
-  assetsPath: string;
   pdfOptions?: PDFOptions;
 }
 
 export class PdfGenerator {
-  async generate({ html, cssPath, assetsPath, pdfOptions }: GeneratePdfOptions): Promise<Buffer> {
+  async generate({ html, cssPath, pdfOptions }: GeneratePdfOptions): Promise<Buffer> {
     const css = await fs.readFile(cssPath, 'utf-8');
+    const templateDir = path.dirname(cssPath);
 
-    const finalHtml = this.prepareHtml({
-      html,
-      css,
-      assetsPath,
-    });
+    const finalHtml = this.prepareHtml({ html, css });
+
+    // Render from a real file:// URL so relative asset paths (../assets/*.png)
+    // resolve correctly. setContent() has no document base URL in Puppeteer 25.
+    const tempHtmlPath = path.join(
+      templateDir,
+      `.receipt-render-${process.pid}-${Date.now()}.html`,
+    );
+    await fs.writeFile(tempHtmlPath, finalHtml, 'utf-8');
 
     const executablePath = await this.findBrowserExecutablePath();
     const browser = await puppeteer.launch({
       headless: true,
       ...(executablePath ? { executablePath } : {}),
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--allow-file-access-from-files'],
     });
 
     try {
       const page = await browser.newPage();
 
-      await page.setContent(finalHtml, {
-        waitUntil: 'domcontentloaded',
+      await page.goto(pathToFileURL(tempHtmlPath).href, {
+        waitUntil: 'load',
+      });
+
+      await page.evaluate(async () => {
+        await Promise.all(
+          Array.from(document.images).map((image) => {
+            if (image.complete) {
+              return Promise.resolve();
+            }
+
+            return new Promise<void>((resolve, reject) => {
+              image.addEventListener('load', () => resolve(), { once: true });
+              image.addEventListener(
+                'error',
+                () => reject(new Error(`Failed to load image: ${image.src}`)),
+                { once: true },
+              );
+            });
+          }),
+        );
+
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
       });
 
       const pdf = await page.pdf({
@@ -49,6 +77,7 @@ export class PdfGenerator {
 
       return Buffer.from(pdf);
     } finally {
+      await fs.unlink(tempHtmlPath).catch(() => undefined);
       await browser.close();
     }
   }
@@ -107,20 +136,12 @@ export class PdfGenerator {
     }
   }
 
-  private prepareHtml({
-    html,
-    css,
-    assetsPath,
-  }: {
-    html: string;
-    css: string;
-    assetsPath: string;
-  }): string {
-    const normalizedAssets = assetsPath.replace(/\\/g, '/');
-
-    return html
-      .replace('</head>', `<style>${css}</style></head>`)
-      .replaceAll('__ASSETS__', `file://${normalizedAssets}`);
+  private prepareHtml({ html, css }: { html: string; css: string }): string {
+    // Drop the external stylesheet link — CSS is inlined below so Puppeteer
+    // does not need a second network/file fetch for receipt.css.
+    let preparedHtml = html.replace(/<link[^>]*href=["']receipt\.css["'][^>]*\/?>/i, '');
+    preparedHtml = preparedHtml.replace('</head>', `<style>${css}</style></head>`);
+    return preparedHtml;
   }
 }
 

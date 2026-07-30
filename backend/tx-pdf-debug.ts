@@ -24,7 +24,6 @@ import { RECEIPT_PATHS } from './src/modules/receipt/receipt.constants';
     const buffer = await pdfGenerator.generate({
       html,
       cssPath: RECEIPT_PATHS.CSS,
-      assetsPath: RECEIPT_PATHS.ASSETS,
     });
     console.log('buffer length', buffer.length);
   } catch (error) {

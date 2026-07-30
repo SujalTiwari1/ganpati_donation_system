@@ -30,6 +30,8 @@ app.use(requestLoggerMiddleware);
 
 // Routes
 app.use(API_PREFIX, routes);
+app.use(API_PREFIX, routes);
+
 
 // Unknown Routes
 app.use(notFoundMiddleware);

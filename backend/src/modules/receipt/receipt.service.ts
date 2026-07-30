@@ -47,7 +47,6 @@ export class ReceiptService {
       const buffer = await pdfGenerator.generate({
         html,
         cssPath: RECEIPT_PATHS.CSS,
-        assetsPath: RECEIPT_PATHS.ASSETS,
       });
 
       return {

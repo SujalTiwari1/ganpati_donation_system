@@ -3,22 +3,24 @@
    Design tokens
    ===================================================================== */
 :root {
-  --primary: #3e2472;        /* ribbon, amount, "thank you" text */
+  --primary: #3e2472; /* ribbon, amount, "thank you" text */
   --primary-dark: #2b1852;
-  --gold: #c8890f;           /* ornaments, pin icon */
+  --gold: #c8890f; /* ornaments, pin icon, header slogan */
   --gold-light: #e0a83e;
-  --maroon: #7c1f1f;         /* organisation name */
+  --maroon: #7c1f1f; /* organisation name */
   --text: #222222;
   --text-muted: #4a4a4a;
-  --divider: #e6dcc8;        /* dashed rules between detail rows */
-  --bg: #fffdf8;             /* page background */
+  --divider: #e6dcc8; /* dashed rules between detail rows */
+  --bg: #fffdf8; /* page background */
 
-  --font-en: "Poppins", "Segoe UI", sans-serif;
-  --font-mr: "Noto Sans Devanagari", "Poppins", sans-serif;
+  --font-en: 'Poppins', 'Segoe UI', sans-serif;
+  --font-mr: 'Noto Sans Devanagari', 'Poppins', sans-serif;
 
   /* Page frame — keeps content clear of the decorative border/ornaments
-     baked into receipt-background.png. */
-  --frame-inset-y: 30mm;
+     baked into receipt-background.png. The top ornament band is taller
+     than the bottom corners, so the insets are intentionally asymmetric. */
+  --frame-inset-top: 30mm;
+  --frame-inset-bottom: 22mm;
   --frame-inset-x: 24mm;
 }
 
@@ -86,28 +88,32 @@ body {
   position: relative;
   z-index: 1;
   height: 100%;
-  padding: var(--frame-inset-y) var(--frame-inset-x);
+  padding: var(--frame-inset-top) var(--frame-inset-x) var(--frame-inset-bottom);
   display: flex;
   flex-direction: column;
 }
 
 /* =====================================================================
-   Header — logo, org name and address stacked and centered
+   Header — logo, org name, slogan and address stacked and centered.
+   Kept compact so the whole receipt fits the page without overflow.
    ===================================================================== */
 .receipt-header {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 2mm;
-  padding-bottom: 6mm;
+  gap: 1.5mm;
+
+  padding-top: 8mm;
+  padding-bottom: 5mm;
 }
 
 .logo {
-  width: 40mm;
-  height: 40mm;
+  width: 34mm;
+  height: 34mm;
   object-fit: contain;
-  margin-bottom: 2mm;
+
+  margin-bottom: 3mm;
 }
 
 .org-name {
@@ -115,15 +121,25 @@ body {
   color: var(--maroon);
   font-weight: 700;
   font-size: 26pt;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .org-name span {
   display: block;
 }
 
+/* Golden accent line — fills the visual gap under the org name and
+   gives the header the same warmth as the border/watermark artwork. */
+.header-slogan {
+  margin: 1mm 0;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 12pt;
+  letter-spacing: 0.4px;
+}
+
 .org-address {
-  margin: 1mm 0 0;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +174,7 @@ body {
 }
 .ornament-divider--footer {
   max-width: 70mm;
-  margin: 7mm auto 0;
+  margin: 5mm auto 0;
 }
 
 /* =====================================================================
@@ -168,7 +184,7 @@ body {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  margin: 9mm 0 10mm;
+  margin: 8mm 0 10mm;
   height: 14mm;
   flex-shrink: 0;
 }
@@ -212,7 +228,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 3mm;
-  padding: 5mm 0;
+  padding: 3.5mm 0;
   border-bottom: 1px dashed var(--divider);
 }
 .details-row--last {
@@ -271,17 +287,18 @@ body {
    ===================================================================== */
 .thank-you {
   text-align: center;
-  margin-top: 9mm;
+  margin-top: 8mm;
+  margin-bottom: 3mm;
 }
 
 .thank-you__mr {
-  margin: 0 0 2mm;
+  margin: 0 0 1.5mm;
   color: var(--primary);
   font-size: 13pt;
 }
 
 .thank-you__en {
-  margin: 0 0 4mm;
+  margin: 0 0 3mm;
   color: var(--primary);
   font-weight: 700;
   font-size: 14.5pt;
@@ -299,11 +316,13 @@ body {
    ===================================================================== */
 .receipt-footer {
   margin-top: auto;
+  padding-top: 5mm;
+  padding-bottom: 6mm;
   text-align: center;
 }
 
 .footer-note {
-  margin: 3mm 0 0;
+  margin: 4mm 0 0;
   font-size: 9pt;
   line-height: 1.5;
   color: var(--text-muted);
