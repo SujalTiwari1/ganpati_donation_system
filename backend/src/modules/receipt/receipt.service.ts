@@ -55,11 +55,12 @@ export class ReceiptService {
         mimeType: 'application/pdf',
       };
     } catch (error) {
+      console.error("Receipt generation error details:", error);
       if (error instanceof NotFoundError) {
         throw error;
       }
 
-      throw new InternalServerError('Unable to generate receipt.');
+      throw new InternalServerError(`Unable to generate receipt: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 

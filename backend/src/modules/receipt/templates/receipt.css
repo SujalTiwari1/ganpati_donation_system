@@ -20,7 +20,7 @@
      baked into receipt-background.png. The top ornament band is taller
      than the bottom corners, so the insets are intentionally asymmetric. */
   --frame-inset-top: 30mm;
-  --frame-inset-bottom: 22mm;
+  --frame-inset-bottom: 24mm;
   --frame-inset-x: 24mm;
 }
 
@@ -104,8 +104,8 @@ body {
   text-align: center;
   gap: 1.5mm;
 
-  padding-top: 8mm;
-  padding-bottom: 5mm;
+  padding-top: 5mm;
+  padding-bottom: 3mm;
 }
 
 .logo {
@@ -113,7 +113,7 @@ body {
   height: 34mm;
   object-fit: contain;
 
-  margin-bottom: 3mm;
+  margin-bottom: 1.5mm;
 }
 
 .org-name {
@@ -134,8 +134,12 @@ body {
   margin: 1mm 0;
   color: var(--gold);
   font-weight: 700;
-  font-size: 12pt;
+  font-size: 15pt;
+  line-height: 1.2;
   letter-spacing: 0.4px;
+}
+.header-slogan:last-of-type {
+  font-size: 13pt;
 }
 
 .org-address {
@@ -184,7 +188,7 @@ body {
   display: flex;
   align-items: stretch;
   justify-content: center;
-  margin: 8mm 0 10mm;
+  margin: 6mm 0 7mm;
   height: 14mm;
   flex-shrink: 0;
 }
@@ -287,8 +291,8 @@ body {
    ===================================================================== */
 .thank-you {
   text-align: center;
-  margin-top: 8mm;
-  margin-bottom: 3mm;
+  margin-top: 5mm;
+  margin-bottom: 2mm;
 }
 
 .thank-you__mr {
@@ -316,8 +320,8 @@ body {
    ===================================================================== */
 .receipt-footer {
   margin-top: auto;
-  padding-top: 5mm;
-  padding-bottom: 6mm;
+  padding-top: 1mm;
+  padding-bottom: 0.5mm;
   text-align: center;
 }
 

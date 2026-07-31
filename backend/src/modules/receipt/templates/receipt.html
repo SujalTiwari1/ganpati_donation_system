@@ -43,11 +43,12 @@
           />
 
           <h1 class="org-name">
-            <span class="mr">समर्थनगर मित्र मंडळ</span>
-            <span class="mr">घणसोली</span>
+            <span class="mr">समर्थनगर सार्वजनिक</span>
+            <span class="mr">गणेश उत्सव मंडळ</span>
           </h1>
 
           <p class="header-slogan mr">॥ गणपती बाप्पा मोरया ॥</p>
+          <p class="header-slogan header-slogan--sub mr">॥ समर्थनगरचा राजा ॥</p>
 
           <p class="org-address">
             <span class="pin-icon" aria-hidden="true">&#128205;</span>
@@ -92,9 +93,10 @@
           <div class="details-row">
             <span class="detail-label">Amount</span>
             <span class="detail-colon">:</span>
-            <span class="detail-value detail-value--amount">
-              <span class="rupee">&#8377;</span>{{amount}}
-            </span>
+            <!-- {{amount}} is already formatted with its currency symbol
+                 by the backend (e.g. "₹101.00") — do not prepend another
+                 rupee glyph here, or it renders as "₹ ₹101.00". -->
+            <span class="detail-value detail-value--amount">{{amount}}</span>
           </div>
 
           <div class="details-row">
