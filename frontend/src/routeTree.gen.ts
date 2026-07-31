@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AnalyticsIndexRouteImport } from './routes/analytics/index'
@@ -27,6 +28,11 @@ import { Route as VolunteersIndexRouteImport } from './routes/volunteers/index'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -97,6 +103,7 @@ const VolunteersIndexRoute = VolunteersIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/buildings/$id': typeof BuildingsIdRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/buildings/$id': typeof BuildingsIdRoute
@@ -130,6 +138,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/buildings/$id': typeof BuildingsIdRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/change-password'
     | '/dashboard'
     | '/login'
     | '/buildings/$id'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/change-password'
     | '/dashboard'
     | '/login'
     | '/buildings/$id'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/change-password'
     | '/dashboard'
     | '/login'
     | '/buildings/$id'
@@ -197,6 +209,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   BuildingsIdRoute: typeof BuildingsIdRoute
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -317,6 +337,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   BuildingsIdRoute: BuildingsIdRoute,

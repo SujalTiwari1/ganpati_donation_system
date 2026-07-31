@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Moon, Sun, Monitor } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Moon, Sun, Monitor, ShieldX } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/providers/theme-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { SETTINGS_STORAGE_KEY } from "@/constants";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +61,35 @@ function saveSettings(settings: AppSettings) {
 }
 
 function SettingsPage() {
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAdmin) {
+      toast.error("Access Denied", { description: "You do not have permission." });
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [isAdmin, navigate]);
+
+  if (!isAdmin) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+          <span className="rounded-2xl bg-destructive/10 p-3 text-destructive">
+            <ShieldX className="size-8" />
+          </span>
+          <h1 className="text-2xl font-semibold text-foreground">403 — Unauthorized</h1>
+          <p className="max-w-md text-sm text-muted-foreground">
+            You do not have permission to view this page.
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <a href="/dashboard">Back to Dashboard</a>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <SettingsContent />

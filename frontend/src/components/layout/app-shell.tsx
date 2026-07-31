@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppNavbar } from "./app-navbar";
 import { AppSidebar } from "./app-sidebar";
@@ -9,8 +9,9 @@ import { SIDEBAR_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/auth-provider";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isBooting } = useAuth();
+  const { isAuthenticated, isBooting, mustChangePassword } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -25,6 +26,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [isBooting, isAuthenticated, navigate]);
 
+  useEffect(() => {
+    if (!isBooting && isAuthenticated && mustChangePassword && pathname !== "/change-password") {
+      navigate({ to: "/change-password", replace: true });
+    }
+  }, [isBooting, isAuthenticated, mustChangePassword, pathname, navigate]);
+
   const toggleSidebar = () => {
     setCollapsed((previous) => {
       const next = !previous;
@@ -33,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
   };
 
-  if (isBooting || !isAuthenticated) {
+  if (isBooting || !isAuthenticated || (mustChangePassword && pathname !== "/change-password")) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-3 px-6">

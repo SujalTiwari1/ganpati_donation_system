@@ -9,13 +9,13 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, adminOnly: true },
-  { label: "Transactions", to: "/transactions", icon: Receipt },
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
+  { label: "Donations", to: "/transactions", icon: Receipt },
   { label: "Buildings", to: "/buildings", icon: Building2 },
-  { label: "Donors", to: "/donors", icon: Users },
+  { label: "Donors", to: "/donors", icon: Users, adminOnly: true },
   { label: "Volunteers", to: "/volunteers", icon: UsersRound, adminOnly: true },
   { label: "Analytics", to: "/analytics", icon: PieChart, adminOnly: true },
   { label: "Audit Logs", to: "/audit-logs", icon: ClipboardList, adminOnly: true },
+  { label: "Settings", to: "/settings", icon: Settings, adminOnly: true },
   { label: "Profile", to: "/profile", icon: User },
-  { label: "Settings", to: "/settings", icon: Settings },
 ];

@@ -20,10 +20,13 @@ interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isVolunteer: boolean;
+  mustChangePassword: boolean;
   isBooting: boolean;
   login: (payload: LoginPayload) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,6 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isBooting, setIsBooting] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const isAdmin = user?.role === "ADMIN";
+  const isVolunteer = user?.role === "VOLUNTEER";
+  const mustChangePassword = Boolean(user?.mustChangePassword);
+
+  const persistUser = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    if (nextUser) {
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+    } else {
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -63,11 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (payload: LoginPayload) => {
     const result = await authService.login(payload);
     setStoredToken(result.accessToken);
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(result.user));
+    persistUser(result.user);
     setToken(result.accessToken);
-    setUser(result.user);
     return result.user;
-  }, []);
+  }, [persistUser]);
 
   const logout = useCallback(async () => {
     try {
@@ -78,30 +93,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await queryClient.cancelQueries();
     queryClient.clear();
     clearSession();
-    setUser(null);
+    persistUser(null);
     setToken(null);
     toast.success("Signed out");
     navigate({ to: "/login", replace: true });
-  }, [navigate, queryClient]);
+  }, [navigate, queryClient, persistUser]);
 
   const refreshProfile = useCallback(async () => {
     const profile = await authService.me();
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profile));
-    setUser(profile);
-  }, []);
+    persistUser(profile);
+  }, [persistUser]);
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const updated = await authService.changePassword({
+        currentPassword,
+        newPassword,
+      });
+      persistUser({ ...updated, mustChangePassword: false });
+    },
+    [persistUser],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       token,
       isAuthenticated: Boolean(token),
-      isAdmin: user?.role === "ADMIN",
+      isAdmin,
+      isVolunteer,
+      mustChangePassword,
       isBooting,
       login,
       logout,
       refreshProfile,
+      changePassword,
     }),
-    [user, token, isBooting, login, logout, refreshProfile],
+    [user, token, isAdmin, isVolunteer, mustChangePassword, isBooting, login, logout, refreshProfile, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

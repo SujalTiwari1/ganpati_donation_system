@@ -1,61 +1,55 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
-  CalendarDays,
+  Building2,
+  ClipboardList,
   IndianRupee,
   Plus,
   Receipt,
+  Target,
   TrendingUp,
+  User,
   Wallet,
 } from "lucide-react";
-import { AppShell } from "@/components/layout/app-shell";
+import { motion } from "framer-motion";
 import { PageHeader } from "@/components/common/page-header";
 import { StatCard } from "@/components/common/stat-card";
 import { StatCardSkeleton, TableSkeleton } from "@/components/common/skeletons";
 import { EmptyState } from "@/components/common/empty-state";
 import { ErrorState } from "@/components/common/error-state";
-import { PaymentSplitChart } from "@/components/dashboard/payment-split-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useDashboard } from "@/hooks/queries/use-dashboard";
+import { useTransactions } from "@/hooks/queries/use-transactions";
 import { useAuth } from "@/providers/auth-provider";
 import { formatCurrency, formatNumber, timeAgo, titleCase } from "@/utils/format";
-import { VolunteerDashboard } from "@/components/dashboard/volunteer-dashboard";
 
-export const Route = createFileRoute("/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard — Vargani CMS" },
-      {
-        name: "description",
-        content: "Live overview of today's Ganpati vargani collection, receipts and payment split.",
-      },
-      { property: "og:title", content: "Dashboard — Vargani CMS" },
-      { property: "og:description", content: "Live collection metrics for your mandal." },
-    ],
-  }),
-  component: DashboardPage,
-});
+const DAILY_TARGET = 50000;
 
-function DashboardPage() {
-  const { isAdmin } = useAuth();
-  return (
-    <AppShell>
-      {isAdmin ? <DashboardContent /> : <VolunteerDashboard />}
-    </AppShell>
-  );
-}
-
-function DashboardContent() {
+export function VolunteerDashboard() {
   const { user } = useAuth();
   const { data, isLoading, isError, error, refetch } = useDashboard();
+  const { data: txData } = useTransactions({ limit: 50, sortBy: "createdAt", sortOrder: "desc" });
+
   const summary = data?.summary;
+  const recentTransactions = txData?.data ?? [];
+
+  const todayCollection = summary?.todayCollection ?? 0;
+  const progressPct = Math.min(Math.round((todayCollection / DAILY_TARGET) * 100), 100);
+
+  const quickActions = [
+    { label: "Collect Donation", to: "/transactions/new", icon: Plus },
+    { label: "View Buildings", to: "/buildings", icon: Building2 },
+    { label: "My Donations", to: "/transactions", icon: ClipboardList },
+    { label: "Profile", to: "/profile", icon: User },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={`Namaskar, ${user?.name?.split(" ")[0] ?? "Volunteer"} 🙏`}
-        description="Here's how the vargani collection is going today."
+        description="Here's your collection summary for today."
         actions={
           <Button asChild className="active:scale-95">
             <Link to="/transactions/new">
@@ -71,6 +65,7 @@ function DashboardContent() {
         </Card>
       ) : (
         <>
+          {/* Stat cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {isLoading
               ? Array.from({ length: 4 }).map((_, index) => <StatCardSkeleton key={index} />)
@@ -83,17 +78,17 @@ function DashboardContent() {
                     accent: "saffron" as const,
                   },
                   {
-                    title: "This Month",
-                    value: formatCurrency(summary?.monthCollection),
-                    subtitle: "Month-to-date collection",
-                    icon: CalendarDays,
-                    accent: "emerald" as const,
-                  },
-                  {
-                    title: "This Year",
+                    title: "Total Collections",
                     value: formatCurrency(summary?.yearCollection),
                     subtitle: `${formatNumber(summary?.totalTransactions)} total receipts`,
                     icon: TrendingUp,
+                    accent: "emerald" as const,
+                  },
+                  {
+                    title: "Total Donations Collected",
+                    value: formatNumber(summary?.totalTransactions),
+                    subtitle: "Donations recorded",
+                    icon: Receipt,
                     accent: "saffron" as const,
                   },
                   {
@@ -107,13 +102,7 @@ function DashboardContent() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-5">
-            <div className="lg:col-span-2">
-              <PaymentSplitChart
-                data={data?.paymentDistribution ?? []}
-                isLoading={isLoading}
-              />
-            </div>
-
+            {/* Recent Donations */}
             <Card className="lg:col-span-3">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">Recent Donations</CardTitle>
@@ -126,7 +115,7 @@ function DashboardContent() {
               <CardContent className="px-0 pb-0">
                 {isLoading ? (
                   <TableSkeleton rows={5} columns={4} />
-                ) : (data?.recentTransactions.length ?? 0) === 0 ? (
+                ) : recentTransactions.length === 0 ? (
                   <EmptyState
                     icon={Receipt}
                     title="No donations yet"
@@ -139,14 +128,14 @@ function DashboardContent() {
                   />
                 ) : (
                   <ul className="divide-y divide-border">
-                    {data?.recentTransactions.slice(0, 6).map((item) => (
+                    {recentTransactions.slice(0, 6).map((item) => (
                       <li
                         key={item.id}
                         className="flex items-center justify-between gap-4 px-6 py-3 transition-colors hover:bg-muted/50"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">
-                            {item.donorName}
+                            {item.donor.name}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {item.receiptNumber} · {item.building?.name ?? "—"} ·{" "}
@@ -158,7 +147,7 @@ function DashboardContent() {
                             {formatCurrency(item.amount)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {titleCase(item.paymentMode ?? "")}
+                            {titleCase(item.paymentMethod ?? "")}
                           </p>
                         </div>
                       </li>
@@ -167,6 +156,71 @@ function DashboardContent() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Collection Progress + Quick Actions */}
+            <div className="space-y-4 lg:col-span-2">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.1, ease: "easeOut" }}
+              >
+                <Card className="card-elevated h-full rounded-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Target className="size-4 text-primary" />
+                      Collection Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Today's Target</p>
+                        <p className="font-display text-xl font-semibold text-foreground">
+                          {formatCurrency(DAILY_TARGET)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Collected</p>
+                        <p className="font-display text-xl font-semibold text-primary">
+                          {formatCurrency(todayCollection)}
+                        </p>
+                      </div>
+                    </div>
+                    <Progress value={progressPct} className="h-2.5" />
+                    <p className="text-center text-sm font-medium text-muted-foreground">
+                      {progressPct}% of today's target
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <Card className="card-elevated rounded-xl">
+                <CardHeader>
+                  <CardTitle className="text-base">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-3">
+                  {quickActions.map((action, i) => (
+                    <motion.div
+                      key={action.to}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: 0.15 + i * 0.05 }}
+                    >
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-auto flex-col gap-2 py-4 active:scale-95"
+                      >
+                        <Link to={action.to}>
+                          <action.icon className="size-5 text-primary" />
+                          <span className="text-xs font-medium">{action.label}</span>
+                        </Link>
+                      </Button>
+                    </motion.div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </>
       )}
