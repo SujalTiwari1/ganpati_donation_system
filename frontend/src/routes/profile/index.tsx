@@ -30,7 +30,7 @@ function ProfilePage() {
 
 function ProfileContent() {
   const { user } = useAuth();
-  const { data: txData } = useTransactions({ limit: 200, sortBy: "createdAt", sortOrder: "desc" });
+  const { data: txData } = useTransactions({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
 
   if (!user) return null;
 

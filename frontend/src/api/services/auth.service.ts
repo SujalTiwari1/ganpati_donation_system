@@ -2,7 +2,7 @@ import { apiClient, unwrap } from "@/api/client";
 import type { ApiEnvelope, LoginResponse, User } from "@/types/api";
 
 export interface LoginPayload {
-  email: string;
+  identifier: string;
   password: string;
 }
 

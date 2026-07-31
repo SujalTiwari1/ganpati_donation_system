@@ -70,7 +70,7 @@ function DonorsContent() {
 
   // Fetch a large batch of transactions to group client-side
   const { data, isLoading, isError, error, refetch } = useTransactions({
-    limit: 200,
+    limit: 100,
     sortBy: "createdAt",
     sortOrder: "desc",
   });

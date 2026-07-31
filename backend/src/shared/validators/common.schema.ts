@@ -15,10 +15,11 @@ export const idParamSchema = z.object({
 export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
-  .max(72, "Password must be at most 72 characters") // bcrypt's max input length
+  .max(64, "Password must be at most 64 characters") // bcrypt's max input length is 72, user requested 64
   .regex(/[a-z]/, "Password must contain a lowercase letter")
   .regex(/[A-Z]/, "Password must contain an uppercase letter")
-  .regex(/[0-9]/, "Password must contain a number");
+  .regex(/[0-9]/, "Password must contain a number")
+  .regex(/[^a-zA-Z0-9]/, "Password must contain a special character");
 
 /** India-format mobile number, 10 digits. Adjust if intl. numbers are needed. */
 export const mobileSchema = z

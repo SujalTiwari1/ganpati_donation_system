@@ -11,6 +11,18 @@ class AuthRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
+  findByIdentifier(identifier: string): Promise<User | null> {
+    return prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: identifier },
+          { email: identifier },
+          { mobile: identifier },
+        ],
+      },
+    });
+  }
+
   findByMobile(mobile: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { mobile } });
   }
@@ -27,6 +39,13 @@ class AuthRepository {
     return tx.user.update({
       where: { id },
       data: { lastLoginAt: new Date() },
+    });
+  }
+
+  updatePassword(id: string, passwordHash: string, tx: Prisma.TransactionClient = prisma): Promise<User> {
+    return tx.user.update({
+      where: { id },
+      data: { passwordHash },
     });
   }
 }

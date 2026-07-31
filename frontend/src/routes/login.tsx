@@ -24,7 +24,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,14 +36,14 @@ function LoginPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+    if (!identifier.trim() || !password) {
+      setError("Enter your username, email or phone number, and password.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      const user = await login({ email: email.trim(), password });
+      const user = await login({ identifier: identifier.trim(), password });
       toast.success(`Welcome back, ${user.name.split(" ")[0]}`);
       navigate({ to: "/dashboard", replace: true });
     } catch (caught) {
@@ -101,19 +101,19 @@ function LoginPage() {
             <CardContent className="p-6 sm:p-8">
               <h1 className="font-display text-2xl font-semibold text-foreground">Sign in</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Use your registered mandal email address.
+                Use your registered username, email, or phone number.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
+                  <Label htmlFor="identifier">Username / Email / Phone</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="volunteer@mandal.org"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    id="identifier"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Enter username, email or phone number"
+                    value={identifier}
+                    onChange={(event) => setIdentifier(event.target.value)}
                     maxLength={120}
                   />
                 </div>

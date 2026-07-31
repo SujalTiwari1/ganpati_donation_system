@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, ClipboardList } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { SearchInput } from "@/components/common/search-input";
@@ -197,9 +197,8 @@ function AuditLogsContent() {
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.map((log) => (
-                  <>
+                  <Fragment key={log.id}>
                     <tr
-                      key={log.id}
                       className="cursor-pointer transition-colors hover:bg-muted/40"
                       onClick={() =>
                         setExpandedId(expandedId === log.id ? null : log.id)
@@ -247,7 +246,7 @@ function AuditLogsContent() {
                         </td>
                       </tr>
                     ) : null}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>

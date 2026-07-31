@@ -3,7 +3,7 @@ import { UserRole } from "@prisma/client";
 import { mobileSchema, passwordSchema } from "../../shared/validators";
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+  identifier: z.string().trim().min(3, "Identifier must be at least 3 characters"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -23,3 +23,17 @@ export const registerSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: passwordSchema,
+  confirmPassword: z.string().min(1, "Confirm password is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+}).refine((data) => data.currentPassword !== data.newPassword, {
+  message: "New password cannot be the same as current password",
+  path: ["newPassword"],
+});
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

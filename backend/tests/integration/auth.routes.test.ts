@@ -34,7 +34,7 @@ describe("Auth routes (integration)", () => {
 
       const res = await request(app)
         .post("/api/v1/auth/login")
-        .send({ email: "volunteer@example.com", password: "Sup3rSecret1" });
+        .send({ identifier: "volunteer@example.com", password: "Sup3rSecret1!" });
 
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
@@ -45,10 +45,10 @@ describe("Auth routes (integration)", () => {
       expect(res.body.data.user).not.toHaveProperty("passwordHash");
     });
 
-    it("422s when the request body fails validation (bad email format)", async () => {
+    it("422s when the request body fails validation (identifier too short)", async () => {
       const res = await request(app)
         .post("/api/v1/auth/login")
-        .send({ email: "not-an-email", password: "x" });
+        .send({ identifier: "no", password: "x" });
 
       expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
@@ -56,7 +56,7 @@ describe("Auth routes (integration)", () => {
     });
 
     it("422s when the password field is missing entirely", async () => {
-      const res = await request(app).post("/api/v1/auth/login").send({ email: "a@example.com" });
+      const res = await request(app).post("/api/v1/auth/login").send({ identifier: "a@example.com" });
 
       expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
@@ -67,7 +67,7 @@ describe("Auth routes (integration)", () => {
 
       const res = await request(app)
         .post("/api/v1/auth/login")
-        .send({ email: "volunteer@example.com", password: "WrongPassword1" });
+        .send({ identifier: "volunteer@example.com", password: "WrongPassword1" });
 
       expect(res.status).toBe(401);
       expect(res.body).toMatchObject({ success: false, message: "Invalid email or password" });
@@ -125,8 +125,9 @@ describe("Auth routes (integration)", () => {
     const validBody = {
       name: "New Volunteer",
       email: "new.volunteer@example.com",
+      username: "new_volunteer",
       mobile: "9123456780",
-      password: "Sup3rSecret1",
+      password: "Sup3rSecret1!",
     };
 
     it("401s without a token", async () => {
@@ -212,6 +213,75 @@ describe("Auth routes (integration)", () => {
       expect(mockedAuthService.register).toHaveBeenCalledWith(
         expect.objectContaining({ role: UserRole.VOLUNTEER }),
         "admin-1"
+      );
+    });
+  });
+
+  describe("PATCH /api/v1/auth/change-password", () => {
+    const validBody = {
+      currentPassword: "OldPassword1!",
+      newPassword: "NewPassword1!",
+      confirmPassword: "NewPassword1!",
+    };
+
+    it("401s without a token", async () => {
+      const res = await request(app).patch("/api/v1/auth/change-password").send(validBody);
+
+      expect(res.status).toBe(401);
+      expect(mockedAuthService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("422s when validation fails (passwords don't match)", async () => {
+      const res = await request(app)
+        .patch("/api/v1/auth/change-password")
+        .set("Authorization", `Bearer ${volunteerToken()}`)
+        .send({ ...validBody, confirmPassword: "DifferentPassword1!" });
+
+      expect(res.status).toBe(422);
+      expect(mockedAuthService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("422s when new password is the same as current password", async () => {
+      const res = await request(app)
+        .patch("/api/v1/auth/change-password")
+        .set("Authorization", `Bearer ${volunteerToken()}`)
+        .send({ ...validBody, newPassword: "OldPassword1!", confirmPassword: "OldPassword1!" });
+
+      expect(res.status).toBe(422);
+      expect(mockedAuthService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("401s when the service reports incorrect current password", async () => {
+      mockedAuthService.changePassword.mockRejectedValue(
+        new UnauthorizedError("Current password is incorrect.")
+      );
+
+      const res = await request(app)
+        .patch("/api/v1/auth/change-password")
+        .set("Authorization", `Bearer ${volunteerToken()}`)
+        .send(validBody);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe("Current password is incorrect.");
+    });
+
+    it("200s and updates password for valid request", async () => {
+      mockedAuthService.changePassword.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .patch("/api/v1/auth/change-password")
+        .set("Authorization", `Bearer ${volunteerToken()}`)
+        .send(validBody);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe("Password changed successfully.");
+      expect(mockedAuthService.changePassword).toHaveBeenCalledWith(
+        "vol-1",
+        validBody,
+        expect.any(String), // ip address from express (e.g. ::ffff:127.0.0.1)
+        expect.any(String)  // user-agent (e.g. node-superagent)
       );
     });
   });

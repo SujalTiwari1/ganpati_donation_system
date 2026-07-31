@@ -50,6 +50,7 @@ export class WhatsAppProvider implements IMessagingProvider {
     formData.append('file', file, {
       filename: fileName,
       contentType: mimeType,
+      knownLength: file.length,
     });
 
     try {
@@ -60,17 +61,17 @@ export class WhatsAppProvider implements IMessagingProvider {
           headers: formData.getHeaders(),
         },
       );
-
       return response.data.id;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        console.error("WhatsApp Upload Error. File Size:", file.length, "bytes");
+        console.error("Response Data:", JSON.stringify(error.response?.data, null, 2));
+        console.error("Axios Error Message:", error.message);
         const axiosError = error as AxiosError<WhatsAppErrorResponse>;
-
         throw new InternalServerError(
-          axiosError.response?.data.error.message ?? WHATSAPP_MESSAGES.MEDIA_UPLOAD_FAILED,
+          axiosError.response?.data?.error?.message ?? WHATSAPP_MESSAGES.MEDIA_UPLOAD_FAILED,
         );
       }
-
       throw error;
     }
   }

@@ -5,12 +5,12 @@ import { ApiResponse } from "../../shared/responses";
 import { HTTP_STATUS } from "../../config/constants";
 import { getCurrentUser } from "../auth";
 import { USER_MESSAGES } from "./user.constants";
-import { UserService, userService } from "./user.service";
+import { UserService, userService as defaultUserService } from "./user.service";
 import type { UserListQuery } from "./user.types";
 
 export class UserController {
   constructor(
-    private readonly userService: UserService = userService,
+    private readonly userService: UserService = defaultUserService,
   ) {}
 
   private getIdParam(req: Request): string {

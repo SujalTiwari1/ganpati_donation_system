@@ -4,7 +4,7 @@ import { HTTP_STATUS } from "../../config/constants";
 import { authService } from "./auth.service";
 import { getCurrentUser } from "./auth.middleware";
 import { AUTH_MESSAGES } from "./auth.constants";
-import { LoginInput, RegisterInput } from "./auth.schema";
+import type { LoginInput, RegisterInput, ChangePasswordInput } from "./auth.schema";
 
 /**
  * Every handler follows the same three-line shape:
@@ -51,6 +51,8 @@ export const me = asyncHandler(async (req, res) => {
   });
 });
 
+export type { ChangePasswordInput } from "./auth.schema";
+
 export const logout = asyncHandler(async (_req, res) => {
   // Stateless JWT: nothing to invalidate server-side today. Structured
   // this way so a refresh-token / blacklist store can be added later
@@ -59,5 +61,22 @@ export const logout = asyncHandler(async (_req, res) => {
   ApiResponse.send(res, {
     statusCode: HTTP_STATUS.OK,
     message: AUTH_MESSAGES.LOGOUT_SUCCESS,
+  });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const input = req.body as ChangePasswordInput;
+  const currentUser = getCurrentUser(req);
+
+  await authService.changePassword(
+    currentUser.userId,
+    input,
+    req.ip,
+    req.headers["user-agent"]
+  );
+
+  ApiResponse.send(res, {
+    statusCode: HTTP_STATUS.OK,
+    message: "Password changed successfully.",
   });
 });

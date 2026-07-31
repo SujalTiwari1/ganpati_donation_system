@@ -43,40 +43,29 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-  params: idParamSchema.shape,
-  body: z.object({
-    name: nameSchema.optional(),
-    username: usernameSchema.optional(),
-    email: emailSchema.optional(),
-    mobile: mobileSchema.optional(),
-    status: z.nativeEnum(UserStatus).optional(),
-  }),
+  name: nameSchema.optional(),
+  username: usernameSchema.optional(),
+  email: emailSchema.optional(),
+  mobile: mobileSchema.optional(),
+  status: z.nativeEnum(UserStatus).optional(),
 });
 
 export const getUserSchema = idParamSchema;
 
-export const listUsersSchema = z.object({
-  query: paginationSchema.extend({
-    search: z.string().trim().optional(),
-    role: z.nativeEnum(UserRole).optional(),
-    status: z.nativeEnum(UserStatus).optional(),
-    sortBy: z.enum(["name", "createdAt", "updatedAt"]).optional(),
-    sortOrder: z.enum(["asc", "desc"]).optional(),
-  }),
+export const listUsersSchema = paginationSchema.extend({
+  search: z.string().trim().optional(),
+  role: z.nativeEnum(UserRole).optional(),
+  status: z.nativeEnum(UserStatus).optional(),
+  sortBy: z.enum(["name", "createdAt", "updatedAt"]).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
 export const resetPasswordSchema = z.object({
-  params: idParamSchema.shape,
-  body: z.object({
-    password: passwordSchema,
-  }),
+  password: passwordSchema,
 });
 
 export const changeStatusSchema = z.object({
-  params: idParamSchema.shape,
-  body: z.object({
-    status: z.nativeEnum(UserStatus),
-  }),
+  status: z.nativeEnum(UserStatus),
 });
 
 export type CreateUserBody = z.infer<typeof createUserSchema>;

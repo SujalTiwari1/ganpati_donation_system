@@ -8,7 +8,12 @@ export const authDocs = {
   "POST /auth/login": {
     summary: "Authenticate a user and receive a JWT access token",
     auth: "public",
-    body: { email: "string", password: "string" },
+    body: { identifier: "string", password: "string" },
+    examples: [
+      { identifier: "rahul_1", password: "Test@123" },
+      { identifier: "rahul@gmail.com", password: "Test@123" },
+      { identifier: "9876543210", password: "Test@123" },
+    ],
     responses: { 200: "LoginResult", 401: "Invalid credentials / inactive account" },
   },
   "GET /auth/me": {
@@ -27,5 +32,12 @@ export const authDocs = {
     roles: ["ADMIN"],
     body: { name: "string", email: "string", mobile: "string", password: "string", role: "UserRole" },
     responses: { 201: "SafeUser", 409: "Email/mobile already exists" },
+  },
+  "PATCH /auth/change-password": {
+    summary: "Change the password of the current authenticated user",
+    auth: "bearer",
+    roles: ["ADMIN", "VOLUNTEER"],
+    body: { currentPassword: "string", newPassword: "string", confirmPassword: "string" },
+    responses: { 200: "Success message", 400: "Validation failed / passwords match", 401: "Unauthenticated / incorrect current password" },
   },
 } as const;

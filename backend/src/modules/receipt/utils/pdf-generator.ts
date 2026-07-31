@@ -36,7 +36,7 @@ export class PdfGenerator {
       const page = await browser.newPage();
 
       await page.goto(pathToFileURL(tempHtmlPath).href, {
-        waitUntil: 'load',
+        waitUntil: 'networkidle0',
       });
 
       await page.evaluate(async () => {

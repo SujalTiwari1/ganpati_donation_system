@@ -1,9 +1,9 @@
-import { Prisma, UserStatus, AuditAction, AuditEntity } from "@prisma/client";
+import { UserStatus, AuditAction, AuditEntity } from "@prisma/client";
 import { authRepository } from "./auth.repository";
 import { auditService } from "../audit/audit.service";
-import { LoginInput, RegisterInput } from "./auth.schema";
+import type { LoginInput, RegisterInput, ChangePasswordInput } from "./auth.schema";
 import { comparePassword, generateAccessToken, hashPassword, toSafeUser } from "./auth.utils";
-import { LoginResult, SafeUser } from "./auth.types";
+import type { LoginResult, SafeUser } from "./auth.types";
 import { UnauthorizedError, ConflictError } from "../../shared/errors";
 import { AUTH_MESSAGES } from "./auth.constants";
 import { logger } from "../../config/logger";
@@ -15,12 +15,12 @@ class AuthService {
    * update lastLoginAt -> issue JWT.
    */
   async login(input: LoginInput, ipAddress?: string, userAgent?: string): Promise<LoginResult> {
-    const { email, password } = input;
+    const { identifier, password } = input;
 
-    const user = await authRepository.findByEmail(email);
+    const user = await authRepository.findByIdentifier(identifier);
 
     if (!user || user.deletedAt) {
-      logger.warn("Failed login attempt: user not found", { email });
+      logger.warn("Failed login attempt: user not found", { identifier });
       throw new UnauthorizedError(AUTH_MESSAGES.INVALID_CREDENTIALS);
     }
 
@@ -44,7 +44,7 @@ class AuthService {
           userId: updated.id,
           entity: AuditEntity.AUTH,
           action: AuditAction.LOGIN,
-          entityLabel: updated.email,
+          entityLabel: updated.email ?? updated.username ?? updated.mobile ?? undefined,
           newValue: { lastLoginAt: updated.lastLoginAt },
           ipAddress,
           userAgent,
@@ -58,7 +58,7 @@ class AuthService {
     const accessToken = generateAccessToken({
       userId: updatedUser.id,
       role: updatedUser.role,
-      email: updatedUser.email,
+      email: updatedUser.email ?? updatedUser.username ?? updatedUser.mobile ?? "",
     });
 
     logger.info("Successful login", { userId: updatedUser.id, role: updatedUser.role });
@@ -159,12 +159,47 @@ class AuthService {
         userId: user.id,
         entity: AuditEntity.AUTH,
         action: AuditAction.LOGOUT,
-        entityLabel: user.email,
+        entityLabel: user.email ?? user.username ?? user.mobile ?? undefined,
         oldValue: { lastLoginAt: user.lastLoginAt },
         ipAddress,
         userAgent,
       }
     );
+  }
+
+  async changePassword(userId: string, input: ChangePasswordInput, ipAddress?: string, userAgent?: string): Promise<void> {
+    const user = await authRepository.findById(userId);
+
+    if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedError(AUTH_MESSAGES.UNAUTHENTICATED);
+    }
+
+    const isPasswordValid = await comparePassword(input.currentPassword, user.passwordHash);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedError("Current password is incorrect.");
+    }
+
+    const passwordHash = await hashPassword(input.newPassword);
+
+    await prisma.$transaction(async (tx) => {
+      await authRepository.updatePassword(user.id, passwordHash, tx);
+
+      await auditService.record(
+        {
+          userId: user.id,
+          entity: AuditEntity.USER,
+          action: AuditAction.PASSWORD_CHANGED,
+          entityLabel: user.email ?? user.username ?? user.mobile ?? undefined,
+          newValue: { passwordChanged: true }, // Not logging hashes or passwords
+          ipAddress,
+          userAgent,
+        },
+        tx
+      );
+    });
+
+    logger.info("User changed password", { userId: user.id });
   }
 }
 

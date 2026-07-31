@@ -15,10 +15,13 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: env.CLIENT_URL || "http://localhost:8080"||"*" ,
     credentials: true,
   }),
 );
+
+console.log(env.CLIENT_URL)
+
 
 // Parsers
 app.use(express.json());

@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://ganpati-donation-system.onrender.com/api/v1";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 export const TOKEN_STORAGE_KEY = "vargani.token";
 export const USER_STORAGE_KEY = "vargani.user";

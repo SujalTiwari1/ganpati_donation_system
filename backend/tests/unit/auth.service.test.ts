@@ -19,10 +19,10 @@ describe("authService", () => {
       const passwordHash = await hashPassword(plainPassword);
       const user = buildUser({ email: "volunteer@example.com", passwordHash });
 
-      mockedRepo.findByEmail.mockResolvedValue(user);
+      mockedRepo.findByIdentifier.mockResolvedValue(user);
       mockedRepo.updateLastLogin.mockResolvedValue({ ...user, lastLoginAt: new Date() });
 
-      const result = await authService.login({ email: user.email, password: plainPassword });
+      const result = await authService.login({ identifier: user.email!, password: plainPassword });
 
       expect(result.accessToken).toEqual(expect.any(String));
       expect(result.user.email).toBe(user.email);
@@ -31,10 +31,10 @@ describe("authService", () => {
     });
 
     it("throws UnauthorizedError when the user does not exist", async () => {
-      mockedRepo.findByEmail.mockResolvedValue(null);
+      mockedRepo.findByIdentifier.mockResolvedValue(null);
 
       await expect(
-        authService.login({ email: "ghost@example.com", password: "whatever" })
+        authService.login({ identifier: "ghost@example.com", password: "whatever" })
       ).rejects.toThrow(UnauthorizedError);
 
       expect(mockedRepo.updateLastLogin).not.toHaveBeenCalled();
@@ -42,19 +42,19 @@ describe("authService", () => {
 
     it("throws UnauthorizedError when the user is soft-deleted", async () => {
       const user = buildUser({ deletedAt: new Date() });
-      mockedRepo.findByEmail.mockResolvedValue(user);
+      mockedRepo.findByIdentifier.mockResolvedValue(user);
 
       await expect(
-        authService.login({ email: user.email, password: "whatever" })
+        authService.login({ identifier: user.email!, password: "whatever" })
       ).rejects.toThrow(UnauthorizedError);
     });
 
     it("throws UnauthorizedError when the account is INACTIVE", async () => {
       const user = buildUser({ status: UserStatus.INACTIVE });
-      mockedRepo.findByEmail.mockResolvedValue(user);
+      mockedRepo.findByIdentifier.mockResolvedValue(user);
 
       await expect(
-        authService.login({ email: user.email, password: "whatever" })
+        authService.login({ identifier: user.email!, password: "whatever" })
       ).rejects.toThrow(UnauthorizedError);
 
       expect(mockedRepo.updateLastLogin).not.toHaveBeenCalled();
@@ -63,10 +63,10 @@ describe("authService", () => {
     it("throws UnauthorizedError when the password is incorrect", async () => {
       const passwordHash = await hashPassword("CorrectPassword1");
       const user = buildUser({ passwordHash });
-      mockedRepo.findByEmail.mockResolvedValue(user);
+      mockedRepo.findByIdentifier.mockResolvedValue(user);
 
       await expect(
-        authService.login({ email: user.email, password: "WrongPassword1" })
+        authService.login({ identifier: user.email!, password: "WrongPassword1" })
       ).rejects.toThrow(UnauthorizedError);
 
       expect(mockedRepo.updateLastLogin).not.toHaveBeenCalled();
@@ -75,10 +75,10 @@ describe("authService", () => {
     it("never leaks the password hash on any success or failure path", async () => {
       const passwordHash = await hashPassword("Sup3rSecret!");
       const user = buildUser({ passwordHash });
-      mockedRepo.findByEmail.mockResolvedValue(user);
+      mockedRepo.findByIdentifier.mockResolvedValue(user);
       mockedRepo.updateLastLogin.mockResolvedValue(user);
 
-      const result = await authService.login({ email: user.email, password: "Sup3rSecret!" });
+      const result = await authService.login({ identifier: user.email!, password: "Sup3rSecret!" });
 
       expect(JSON.stringify(result)).not.toContain(passwordHash);
     });
@@ -88,8 +88,9 @@ describe("authService", () => {
     const input = {
       name: "New Volunteer",
       email: "new.volunteer@example.com",
+      username: "new_volunteer",
       mobile: "9123456780",
-      password: "Sup3rSecret1",
+      password: "Sup3rSecret1!",
       role: UserRole.VOLUNTEER,
     };
 
