@@ -68,7 +68,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   const input = req.body as ChangePasswordInput;
   const currentUser = getCurrentUser(req);
 
-  await authService.changePassword(
+  const updatedUser = await authService.changePassword(
     currentUser.userId,
     input,
     req.ip,
@@ -78,5 +78,6 @@ export const changePassword = asyncHandler(async (req, res) => {
   ApiResponse.send(res, {
     statusCode: HTTP_STATUS.OK,
     message: "Password changed successfully.",
+    data: updatedUser,
   });
 });

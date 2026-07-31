@@ -45,7 +45,11 @@ class AuthRepository {
   updatePassword(id: string, passwordHash: string, tx: Prisma.TransactionClient = prisma): Promise<User> {
     return tx.user.update({
       where: { id },
-      data: { passwordHash },
+      data: { 
+        passwordHash,
+        mustChangePassword: false,
+        passwordChangedAt: new Date()
+      },
     });
   }
 }

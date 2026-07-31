@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Flower2 } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/providers/auth-provider";
+import { getDashboardRoute } from "@/utils/auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -23,13 +24,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { isAuthenticated, isBooting } = useAuth();
+  const { isAuthenticated, isBooting, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isBooting) return;
-    navigate({ to: isAuthenticated ? "/dashboard" : "/login", replace: true });
-  }, [isAuthenticated, isBooting, navigate]);
+    navigate({ to: isAuthenticated ? getDashboardRoute(user?.role) : "/login", replace: true });
+  }, [isAuthenticated, isBooting, user?.role, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

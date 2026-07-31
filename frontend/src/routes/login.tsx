@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/auth-provider";
+import { getDashboardRoute } from "@/utils/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -31,8 +32,10 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) navigate({ to: "/dashboard", replace: true });
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated) {
+      navigate({ to: getDashboardRoute(user?.role), replace: true });
+    }
+  }, [isAuthenticated, user?.role, navigate]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -45,7 +48,12 @@ function LoginPage() {
     try {
       const user = await login({ identifier: identifier.trim(), password });
       toast.success(`Welcome back, ${user.name.split(" ")[0]}`);
-      navigate({ to: "/dashboard", replace: true });
+      
+      if (user.mustChangePassword) {
+        navigate({ to: "/change-password", replace: true });
+      } else {
+        navigate({ to: getDashboardRoute(user.role), replace: true });
+      }
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Unable to sign in.";
       setError(message);

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/providers/auth-provider";
+import { getDashboardRoute } from "@/utils/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -53,7 +54,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 function ChangePasswordPage() {
-  const { isAuthenticated, isBooting, mustChangePassword, changePassword } = useAuth();
+  const { isAuthenticated, isBooting, mustChangePassword, changePassword, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,7 +72,7 @@ function ChangePasswordPage() {
     try {
       await changePassword(values.currentPassword, values.newPassword, values.confirmPassword);
       toast.success("Password changed successfully.");
-      navigate({ to: "/dashboard", replace: true });
+      navigate({ to: getDashboardRoute(user?.role), replace: true });
     } catch (caught) {
       const message =
         caught && typeof caught === "object" && "message" in caught

@@ -167,7 +167,7 @@ class AuthService {
     );
   }
 
-  async changePassword(userId: string, input: ChangePasswordInput, ipAddress?: string, userAgent?: string): Promise<void> {
+  async changePassword(userId: string, input: ChangePasswordInput, ipAddress?: string, userAgent?: string): Promise<SafeUser> {
     const user = await authRepository.findById(userId);
 
     if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE) {
@@ -182,8 +182,8 @@ class AuthService {
 
     const passwordHash = await hashPassword(input.newPassword);
 
-    await prisma.$transaction(async (tx) => {
-      await authRepository.updatePassword(user.id, passwordHash, tx);
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const updated = await authRepository.updatePassword(user.id, passwordHash, tx);
 
       await auditService.record(
         {
@@ -197,9 +197,13 @@ class AuthService {
         },
         tx
       );
+      
+      return updated;
     });
 
     logger.info("User changed password", { userId: user.id });
+    
+    return toSafeUser(updatedUser);
   }
 }
 
