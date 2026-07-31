@@ -35,10 +35,12 @@ export interface Paginated<T> {
 export interface User {
   id: string;
   name: string;
+  username?: string;
   email: string;
   mobile: string;
   role: UserRole;
   status: "ACTIVE" | "SUSPENDED" | string;
+  mustChangePassword?: boolean;
   lastLoginAt?: string | null;
   createdAt?: string;
   updatedAt?: string;

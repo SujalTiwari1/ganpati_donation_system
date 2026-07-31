@@ -9,6 +9,12 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+  username: z
+    .string()
+    .trim()
+    .min(3, "Username must be at least 3 characters")
+    .max(100, "Username cannot exceed 100 characters")
+    .regex(/^[a-zA-Z0-9_.-]+$/, "Username can only contain letters, numbers, dots, hyphens and underscores"),
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
   mobile: mobileSchema,
   password: passwordSchema,

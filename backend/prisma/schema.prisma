@@ -126,11 +126,13 @@ enum AuditEntity {
 model User {
   id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name         String     @db.VarChar(150)
+  username     String     @unique @db.VarChar(100)
   email        String     @unique @db.Citext
   mobile       String     @unique @db.VarChar(15)
   passwordHash String     @map("password_hash") @db.Text
   role         UserRole   @default(VOLUNTEER)
   status       UserStatus @default(ACTIVE)
+  mustChangePassword Boolean @default(true) @map("must_change_password")
 
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz

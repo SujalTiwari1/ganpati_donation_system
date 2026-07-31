@@ -1,13 +1,4 @@
-import {
-  Building2,
-  ClipboardList,
-  LayoutDashboard,
-  PieChart,
-  Receipt,
-  Settings,
-  User,
-  Users,
-} from "lucide-react";
+import { Building2, ClipboardList, LayoutDashboard, ChartPie as PieChart, Receipt, Settings, User, Users, UsersRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavItem {
@@ -22,6 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Transactions", to: "/transactions", icon: Receipt },
   { label: "Buildings", to: "/buildings", icon: Building2 },
   { label: "Donors", to: "/donors", icon: Users },
+  { label: "Volunteers", to: "/volunteers", icon: UsersRound, adminOnly: true },
   { label: "Analytics", to: "/analytics", icon: PieChart, adminOnly: true },
   { label: "Audit Logs", to: "/audit-logs", icon: ClipboardList, adminOnly: true },
   { label: "Profile", to: "/profile", icon: User },

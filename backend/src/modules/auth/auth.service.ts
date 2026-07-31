@@ -77,7 +77,7 @@ class AuthService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<SafeUser> {
-    const { name, email, mobile, password, role } = input;
+    const { name, email, mobile, password, role, username } = input;
 
     const [existingByEmail, existingByMobile] = await Promise.all([
       authRepository.findByEmail(email),
@@ -98,6 +98,7 @@ class AuthService {
       const createdUser = await authRepository.create(
         {
           name,
+          username,
           email,
           mobile,
           passwordHash,
