@@ -26,7 +26,7 @@ interface AuthContextValue {
   login: (payload: LoginPayload) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -105,10 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persistUser]);
 
   const changePassword = useCallback(
-    async (currentPassword: string, newPassword: string) => {
+    async (currentPassword: string, newPassword: string, confirmPassword: string) => {
       const updated = await authService.changePassword({
         currentPassword,
         newPassword,
+        confirmPassword,
       });
       persistUser({ ...updated, mustChangePassword: false });
     },

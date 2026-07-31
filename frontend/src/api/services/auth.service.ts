@@ -18,6 +18,7 @@ export interface RegisterPayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+  confirmPassword: string;
 }
 
 export const authService = {

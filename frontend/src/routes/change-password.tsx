@@ -69,7 +69,7 @@ function ChangePasswordPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await changePassword(values.currentPassword, values.newPassword);
+      await changePassword(values.currentPassword, values.newPassword, values.confirmPassword);
       toast.success("Password changed successfully.");
       navigate({ to: "/dashboard", replace: true });
     } catch (caught) {
