@@ -12,7 +12,7 @@ import { requestLoggerMiddleware, notFoundMiddleware, errorMiddleware } from './
 const app = express();
 
 // Security
-const allowedOrigins = ['http://localhost:8080', 'https://ganpati-donation-system.vercel.app/'];
+const allowedOrigins = ['http://localhost:8080', 'https://ganpati-donation-system.vercel.app'];
 app.use(helmet());
 app.use(
   cors({
