@@ -92,6 +92,36 @@ export class UserController {
     const stats = await this.userService.getStats();
     ApiResponse.success(res, stats, HTTP_STATUS.OK.toString());
   });
+
+  getMyProfile = asyncHandler(async (req: Request, res: Response) => {
+    const currentUser = getCurrentUser(req);
+    const user = await this.userService.getMyProfile(currentUser.userId);
+    ApiResponse.success(res, user, USER_MESSAGES.FETCHED);
+  });
+
+  updateMyProfile = asyncHandler(async (req: Request, res: Response) => {
+    const currentUser = getCurrentUser(req);
+    const user = await this.userService.updateMyProfile(
+      currentUser.userId,
+      req.body,
+      req.ip,
+      req.headers["user-agent"],
+    );
+    ApiResponse.updated(res, user, USER_MESSAGES.UPDATED);
+  });
+
+  getMyStatistics = asyncHandler(async (req: Request, res: Response) => {
+    const currentUser = getCurrentUser(req);
+    const stats = await this.userService.getMyStatistics(currentUser.userId);
+    ApiResponse.success(res, stats, "Statistics fetched successfully");
+  });
+
+  getMyDonations = asyncHandler(async (req: Request, res: Response) => {
+    const currentUser = getCurrentUser(req);
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 10), 1), 100);
+    const donations = await this.userService.getMyDonations(currentUser.userId, limit);
+    ApiResponse.success(res, donations, USER_MESSAGES.FETCHED_ALL);
+  });
 }
 
 export const userController = new UserController();

@@ -61,3 +61,27 @@ export interface ResetPasswordInput {
 export interface ChangeStatusInput {
   status: UserStatus;
 }
+
+export interface VolunteerStatistics {
+  totalCollections: number;
+  totalAmount: number;
+  highestDonation: number;
+  averageDonation: number;
+  buildingsVisited: number;
+}
+
+export interface VolunteerDonation {
+  id: string;
+  receiptNumber: string;
+  donorName: string;
+  buildingName: string;
+  amount: number;
+  paymentMethod: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface VolunteerDonationListResult {
+  data: VolunteerDonation[];
+  total: number;
+}

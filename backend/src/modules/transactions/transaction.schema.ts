@@ -62,6 +62,7 @@ export const listTransactionsSchema = z
         paymentMethod: z.nativeEnum(PaymentMethod).optional(),
         status: z.nativeEnum(TransactionStatus).optional(),
         year: yearSchema.optional(),
+        volunteerId: z.string().uuid().optional(),
         fromDate: z.coerce.date().optional(),
         toDate: z.coerce.date().optional(),
         sortBy: z.enum(TRANSACTION_SORTABLE_FIELDS).optional(),

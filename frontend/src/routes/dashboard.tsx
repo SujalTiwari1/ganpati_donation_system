@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboard } from "@/hooks/queries/use-dashboard";
 import { useAuth } from "@/providers/auth-provider";
 import { formatCurrency, formatNumber, timeAgo, titleCase } from "@/utils/format";
-import { VolunteerDashboard } from "@/components/dashboard/volunteer-dashboard";
+import { VolunteerDashboard } from "@/features/volunteer/pages/volunteer-dashboard";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
