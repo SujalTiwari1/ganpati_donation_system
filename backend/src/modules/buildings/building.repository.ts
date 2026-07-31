@@ -224,6 +224,22 @@ async findByNormalizedNameExceptId(
     });
 }
 
+async getDonatedRooms(buildingId: string): Promise<string[]> {
+    const transactions = await prisma.transaction.findMany({
+        where: {
+            buildingId,
+            deletedAt: null,
+            status: { not: 'CANCELLED' },
+        },
+        select: { roomNumber: true },
+        distinct: ['roomNumber'],
+    });
+    
+    return transactions
+        .map(t => t.roomNumber)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+}
+
 }
 
 export const buildingRepository = new BuildingRepository();

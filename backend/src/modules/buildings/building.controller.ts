@@ -113,6 +113,14 @@ restore = asyncHandler(
         ApiResponse.restored(res, null, BUILDING_MESSAGES.RESTORED);
     }
 );
+
+getDonatedRooms = asyncHandler(
+    async (req: Request, res: Response) => {
+        const rooms = await this.buildingService.getDonatedRooms(this.getIdParam(req));
+        // We can use a generic success message or add one to BUILDING_MESSAGES
+        ApiResponse.success(res, rooms, "Donated rooms fetched successfully");
+    }
+);
 }
 
 export const buildingController =

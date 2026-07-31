@@ -30,4 +30,6 @@ export const buildingsService = {
     unwrap<Partial<Building>>(apiClient.delete<ApiEnvelope<Partial<Building>>>(`/buildings/${id}`)),
   restore: (id: string) =>
     unwrap<null>(apiClient.patch<ApiEnvelope<null>>(`/buildings/${id}/restore`)),
+  donatedRooms: (id: string) =>
+    unwrap<string[]>(apiClient.get<ApiEnvelope<string[]>>(`/buildings/${id}/donated-rooms`)),
 };

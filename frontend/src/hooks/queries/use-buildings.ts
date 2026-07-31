@@ -11,12 +11,29 @@ export const buildingKeys = {
   all: ["buildings"] as const,
   list: (params: BuildingListParams) => [...buildingKeys.all, "list", params] as const,
   detail: (id: string) => [...buildingKeys.all, "detail", id] as const,
+  donatedRooms: (id: string) => [...buildingKeys.all, "donated-rooms", id] as const,
 };
 
 export function useBuildings(params: BuildingListParams) {
   return useQuery({
     queryKey: buildingKeys.list(params),
     queryFn: () => buildingsService.list(params),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useBuilding(id: string) {
+  return useQuery({
+    queryKey: buildingKeys.detail(id),
+    queryFn: () => buildingsService.get(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useBuildingDonatedRooms(id: string) {
+  return useQuery({
+    queryKey: buildingKeys.donatedRooms(id),
+    queryFn: () => buildingsService.donatedRooms(id),
     staleTime: 5 * 60 * 1000,
   });
 }

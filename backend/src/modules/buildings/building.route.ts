@@ -42,6 +42,12 @@ router.get(
     buildingController.getById
 );
 
+router.get(
+    "/:id/donated-rooms",
+    authenticate,
+    buildingController.getDonatedRooms
+);
+
 router.patch(
     "/:id",
     authenticate,

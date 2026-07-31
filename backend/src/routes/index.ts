@@ -18,5 +18,7 @@ router.use('/dashboard', dashboardRouter);
 router.use('/audit-logs', auditRoutes);
 router.use('/users', userRouter);
 router.use('/webhooks', whatsappWebhookRouter);
+import receiptRoutes from '../modules/receipt/receipt.routes';
+router.use('/', receiptRoutes);
 
 export default router;

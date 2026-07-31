@@ -147,13 +147,18 @@ function NewDonationContent() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${savedTransaction.receiptNumber}.pdf`;
+      link.download = `Receipt_${savedTransaction.receiptNumber}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Could not download receipt");
+      toast.success("Receipt downloaded successfully.");
+    } catch (e: any) {
+      if (e?.status === 404) {
+        toast.error("Receipt not found.");
+      } else {
+        toast.error("Unable to download receipt.");
+      }
     } finally {
       setDownloading(false);
     }

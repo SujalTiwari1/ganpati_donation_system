@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBuildings } from "@/hooks/queries/use-buildings";
+import { useBuilding, useBuildingDonatedRooms } from "@/hooks/queries/use-buildings";
 import { useTransactions } from "@/hooks/queries/use-transactions";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { titleCase } from "@/utils/format";
@@ -36,11 +36,13 @@ function BuildingDetailContent() {
   const { id } = useParams({ strict: false }) as { id: string };
   const navigate = useNavigate();
 
-  const { data: buildingsData, isLoading: buildingLoading } = useBuildings({
-    search: id,
-    limit: 100,
-  });
-  const building = buildingsData?.data.find((b) => b.id === id) ?? null;
+  const { data: building, isLoading: buildingLoading, isError: buildingError } = useBuilding(id);
+
+  const {
+    data: donatedRooms,
+    isLoading: roomsLoading,
+    isError: roomsError,
+  } = useBuildingDonatedRooms(id);
 
   const { data: txData, isLoading: txLoading } = useTransactions(
     { limit: 100, sortBy: "createdAt", sortOrder: "desc" },
@@ -149,6 +151,37 @@ function BuildingDetailContent() {
               <dd className="text-sm text-foreground">{formatDate(building.createdAt)}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="card-elevated rounded-xl">
+        <CardHeader>
+          <CardTitle className="text-base">Already Donated Flats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {roomsLoading ? (
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-7 w-20 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-full" />
+              <Skeleton className="h-7 w-16 rounded-full" />
+            </div>
+          ) : roomsError ? (
+            <p className="text-sm font-medium text-danger">Unable to load donated flats.</p>
+          ) : !donatedRooms || donatedRooms.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No flats have donated yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {donatedRooms.map((room) => (
+                <div
+                  key={room}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-success/12 px-3 py-1.5 text-xs font-medium text-success border border-success/20"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                  {room}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

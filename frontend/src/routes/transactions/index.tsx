@@ -65,6 +65,7 @@ function TransactionsContent() {
   const navigate = useNavigate();
   const { params: searchParams, setParams: setSearchParams } = useUrlSearchParams();
   const cancelMutation = useCancelTransaction();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const page = Number(searchParams.get("page") ?? 1) || 1;
   const limit = Number(searchParams.get("limit") ?? DEFAULT_LIMIT) || DEFAULT_LIMIT;
@@ -99,18 +100,27 @@ function TransactionsContent() {
   };
 
   const handleDownload = async (id: string, receiptNumber: string) => {
+    if (downloadingId) return;
+    setDownloadingId(id);
     try {
       const blob = await transactionsService.receiptBlob(id);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${receiptNumber}.pdf`;
+      link.download = `Receipt_${receiptNumber}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Could not download receipt");
+      toast.success("Receipt downloaded successfully");
+    } catch (e: any) {
+      if (e?.status === 404) {
+        toast.error("Receipt not found.");
+      } else {
+        toast.error("Unable to download receipt.");
+      }
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -308,8 +318,8 @@ function TransactionsContent() {
                               <Eye className="size-4" /> View detail
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleDownload(tx.id, tx.receiptNumber)}>
-                            <Download className="size-4" /> Download receipt
+                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleDownload(tx.id, tx.receiptNumber); }} disabled={downloadingId === tx.id}>
+                            <Download className="size-4" /> {downloadingId === tx.id ? "Downloading..." : "Download receipt"}
                           </DropdownMenuItem>
                           {isAdmin && tx.status !== "CANCELLED" ? (
                             <DropdownMenuItem

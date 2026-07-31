@@ -242,6 +242,10 @@ async restore(
     return restored;
 }
 
+async getDonatedRooms(id: string): Promise<string[]> {
+    await this.getBuildingOrThrow(id);
+    return await this.repository.getDonatedRooms(id);
+}
 
     //private helpers
     private async getBuildingOrThrow(
