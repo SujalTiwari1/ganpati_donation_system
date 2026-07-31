@@ -18,13 +18,18 @@ import type {
   SafeUserWithMeta,
   UpdateUserInput,
   UserListQuery,
+  VolunteerDonation,
+  VolunteerStatistics,
+  VolunteerDonationListResult,
 } from "./user.types";
 
 function toSafeUserWithMeta(user: User): SafeUserWithMeta {
   const safe = toSafeUser(user);
   return {
     ...safe,
-    username: safe.username,
+    username: safe.username ?? "",
+    email: safe.email ?? "",
+    mobile: safe.mobile ?? "",
     mustChangePassword: safe.mustChangePassword,
     lastLoginAt: safe.lastLoginAt ? safe.lastLoginAt.toISOString() : null,
     createdAt: safe.createdAt.toISOString(),
@@ -263,6 +268,125 @@ export class UserService {
     };
   }
 
+  async getMyProfile(userId: string): Promise<SafeUserWithMeta> {
+    const user = await this.getUserOrThrow(userId);
+    return toSafeUserWithMeta(user);
+  }
+
+  async updateMyProfile(
+    userId: string,
+    input: { name?: string; email?: string; mobile?: string; username?: string },
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<SafeUserWithMeta> {
+    const user = await this.getUserOrThrow(userId);
+
+    if (input.email && input.email !== user.email) {
+      const existing = await this.repository.findByEmail(input.email);
+      if (existing) throw new ConflictError(USER_MESSAGES.EMAIL_EXISTS);
+    }
+    if (input.mobile && input.mobile !== user.mobile) {
+      const existing = await this.repository.findByMobile(input.mobile);
+      if (existing) throw new ConflictError(USER_MESSAGES.MOBILE_EXISTS);
+    }
+    if (input.username && input.username !== user.username) {
+      const existing = await this.repository.findByUsername(input.username);
+      if (existing) throw new ConflictError(USER_MESSAGES.USERNAME_EXISTS);
+    }
+
+    const data: Record<string, unknown> = {};
+    if (input.name !== undefined) data.name = input.name.trim();
+    if (input.username !== undefined) data.username = input.username.trim();
+    if (input.email !== undefined) data.email = input.email.trim().toLowerCase();
+    if (input.mobile !== undefined) data.mobile = input.mobile.trim();
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await this.repository.update(user.id, data, tx);
+      await auditService.record(
+        {
+          userId: userId,
+          entity: AuditEntity.USER,
+          action: AuditAction.UPDATE,
+          entityId: result.id,
+          entityLabel: result.name,
+          oldValue: { name: user.name, username: user.username, email: user.email, mobile: user.mobile },
+          newValue: { name: result.name, username: result.username, email: result.email, mobile: result.mobile },
+          ipAddress,
+          userAgent,
+        },
+        tx,
+      );
+      return result;
+    });
+
+    logger.info("User updated own profile", { userId });
+    return toSafeUserWithMeta(updated);
+  }
+
+  async getMyStatistics(userId: string): Promise<VolunteerStatistics> {
+    const [agg, buildingsVisited] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: { volunteerId: userId, deletedAt: null, status: "CONFIRMED" },
+        _count: true,
+        _sum: { amount: true },
+        _avg: { amount: true },
+        _max: { amount: true },
+      }),
+      prisma.transaction.findMany({
+        where: { volunteerId: userId, deletedAt: null, status: "CONFIRMED" },
+        distinct: ["buildingId"],
+        select: { buildingId: true },
+      }),
+    ]);
+
+    return {
+      totalCollections: agg._count,
+      totalAmount: Number(agg._sum.amount ?? 0),
+      highestDonation: Number(agg._max.amount ?? 0),
+      averageDonation: Number(agg._avg.amount ?? 0),
+      buildingsVisited: buildingsVisited.length,
+    };
+  }
+
+  async getMyDonations(
+    userId: string,
+    limit = 10,
+  ): Promise<VolunteerDonationListResult> {
+    const [data, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { volunteerId: userId, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true,
+          receiptNumber: true,
+          amount: true,
+          paymentMethod: true,
+          status: true,
+          createdAt: true,
+          donor: { select: { id: true, name: true } },
+          building: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.transaction.count({
+        where: { volunteerId: userId, deletedAt: null },
+      }),
+    ]);
+
+    const donations: VolunteerDonation[] = data.map((tx) => ({
+      id: tx.id,
+      receiptNumber: tx.receiptNumber,
+      donorName: tx.donor.name,
+      buildingName: tx.building.name,
+      amount: Number(tx.amount),
+      paymentMethod: tx.paymentMethod,
+      status: tx.status,
+      createdAt: tx.createdAt.toISOString(),
+    }));
+
+    return { data: donations, total };
+  }
+
   private async getUserOrThrow(id: string): Promise<User> {
     const user = await this.repository.findById(id);
     if (!user) throw new NotFoundError(USER_MESSAGES.NOT_FOUND);
@@ -271,3 +395,6 @@ export class UserService {
 }
 
 export const userService = new UserService();
+
+
+export { UserService, userService }

@@ -9,12 +9,19 @@ import {
   getUserSchema,
   listUsersSchema,
   resetPasswordSchema,
+  updateMyProfileSchema,
   updateUserSchema,
 } from "./user.schema";
 
 const router = Router();
 
-// All routes are admin-only
+// /users/me — accessible by any authenticated user (admin or volunteer)
+router.get("/me", authenticate, userController.getMyProfile);
+router.patch("/me", authenticate, validate(updateMyProfileSchema), userController.updateMyProfile);
+router.get("/me/statistics", authenticate, userController.getMyStatistics);
+router.get("/me/donations", authenticate, userController.getMyDonations);
+
+// All remaining routes are admin-only
 router.use(authenticate, requireRole(UserRole.ADMIN));
 
 router.get("/", validate(listUsersSchema, "query"), userController.list);

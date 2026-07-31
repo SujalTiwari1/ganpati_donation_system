@@ -151,6 +151,7 @@ export class TransactionRepository {
       deletedAt: null,
       ...(query.paymentMethod && { paymentMethod: query.paymentMethod }),
       ...(query.status && { status: query.status }),
+      ...(query.volunteerId && { volunteerId: query.volunteerId }),
       ...(query.year && { festival: { year: query.year } }),
       ...((query.fromDate || query.toDate) && {
         donationDate: {

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/providers/auth-provider";
 import { useTransactions } from "@/hooks/queries/use-transactions";
 import { formatCurrency, formatDate, formatMobile, initialsOf } from "@/utils/format";
+import { VolunteerProfile } from "@/features/volunteer/pages/volunteer-profile";
 
 export const Route = createFileRoute("/profile/")({
   head: () => ({
@@ -21,24 +22,23 @@ export const Route = createFileRoute("/profile/")({
 });
 
 function ProfilePage() {
+  const { isAdmin } = useAuth();
   return (
     <AppShell>
-      <ProfileContent />
+      {isAdmin ? <AdminProfileContent /> : <VolunteerProfile />}
     </AppShell>
   );
 }
 
-function ProfileContent() {
+function AdminProfileContent() {
   const { user } = useAuth();
   const { data: txData } = useTransactions({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
 
   if (!user) return null;
 
-  // Derive personal contribution stats from transactions
   const allTx = txData?.data ?? [];
-  const myTx = allTx; // No volunteer filter in the list response — show all as approximate
-  const totalCollected = myTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-  const confirmedCount = myTx.filter((t) => t.status === "CONFIRMED").length;
+  const totalCollected = allTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const confirmedCount = allTx.filter((t) => t.status === "CONFIRMED").length;
 
   return (
     <div className="space-y-6">

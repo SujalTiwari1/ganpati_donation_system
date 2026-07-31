@@ -68,6 +68,13 @@ export const changeStatusSchema = z.object({
   status: z.nativeEnum(UserStatus),
 });
 
+export const updateMyProfileSchema = z.object({
+  name: nameSchema.optional(),
+  username: usernameSchema.optional(),
+  email: emailSchema.optional(),
+  mobile: mobileSchema.optional(),
+});
+
 export type CreateUserBody = z.infer<typeof createUserSchema>;
 export type UpdateUserBody = z.infer<typeof updateUserSchema>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordSchema>;
