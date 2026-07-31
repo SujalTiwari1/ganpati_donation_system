@@ -143,7 +143,7 @@ export class TransactionService {
         receiptNumber: transaction.receiptNumber,
       });
 
-      await this.sendReceipt(input.mobile, receiptDocument, transaction.id);
+      await this.sendReceipt(input.mobile, receiptDocument, transaction);
     } catch (error) {
       logger.error('Receipt generation failed', {
         transactionId: transaction.id,
@@ -367,8 +367,10 @@ export class TransactionService {
   private async sendReceipt(
     recipient: string | undefined,
     receiptDocument: ReceiptDocument,
-    transactionId: string,
+    transaction: any,
   ): Promise<void> {
+    const transactionId = transaction.id;
+
     if (!recipient) {
       logger.warn('Skipping WhatsApp delivery because donor mobile is missing', {
         transactionId,
@@ -388,13 +390,11 @@ export class TransactionService {
     }
 
     try {
-      const result: MessagingResult = await this.messagingService.sendDocument({
+      const result: MessagingResult = await this.messagingService.sendReceiptDocument(
+        transaction,
+        receiptDocument,
         recipient,
-        fileName: receiptDocument.fileName,
-        mimeType: receiptDocument.mimeType,
-        file: receiptDocument.buffer,
-        caption: 'Your donation receipt from Ganpati Vargani',
-      });
+      );
 
       if (!result.success) {
         await this.repository.updateWhatsAppStatus(transactionId, WhatsappStatus.FAILED);

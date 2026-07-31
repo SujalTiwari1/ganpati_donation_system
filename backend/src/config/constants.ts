@@ -1,4 +1,5 @@
 export const APP_NAME = "Ganpati Vargani Management System";
+export const FESTIVAL_NAME = "Ganpati Vargani";
 
 export const HTTP_STATUS = {
   OK: 200,
