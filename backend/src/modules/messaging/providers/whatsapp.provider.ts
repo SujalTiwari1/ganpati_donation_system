@@ -79,6 +79,7 @@ export class WhatsAppProvider implements IMessagingProvider {
     recipient: string,
     mediaId: string,
     caption?: string,
+    filename?: string,
   ): Promise<MessagingResult> {
     try {
       const response = await this.client.post<WhatsAppSendMessageResponse>(
@@ -91,6 +92,7 @@ export class WhatsAppProvider implements IMessagingProvider {
           document: {
             id: mediaId,
             caption,
+            filename,
           },
         },
       );
@@ -126,7 +128,7 @@ export class WhatsAppProvider implements IMessagingProvider {
 
     const mediaId = await this.uploadMedia(payload.file, payload.fileName, payload.mimeType);
 
-    return this.sendDocumentMessage(recipient, mediaId, payload.caption);
+    return this.sendDocumentMessage(recipient, mediaId, payload.caption, payload.fileName);
   }
   async sendText(payload: SendTextPayload): Promise<MessagingResult> {
     const recipient = this.normalizePhoneNumber(payload.recipient);

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeft, Flower2 } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { NAV_ITEMS } from "./nav-items";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,9 @@ export function AppSidebar({
       )}
     >
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <Flower2 className="size-5" />
-        </span>
+        <div className="flex shrink-0 items-center justify-center size-9 rounded-lg overflow-hidden bg-primary/10">
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+        </div>
         {!collapsed ? (
           <div className="min-w-0">
             <p className="truncate font-display text-sm font-semibold">Vargani CMS</p>

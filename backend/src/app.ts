@@ -12,16 +12,16 @@ import { requestLoggerMiddleware, notFoundMiddleware, errorMiddleware } from './
 const app = express();
 
 // Security
+const allowedOrigins = ['http://localhost:8080', 'https://ganpati-vargani.vercel.app'];
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CLIENT_URL || "http://localhost:8080"||"*" ,
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
 
-console.log(env.CLIENT_URL)
-
+console.log(env.CLIENT_URL);
 
 // Parsers
 app.use(express.json());
@@ -34,7 +34,6 @@ app.use(requestLoggerMiddleware);
 // Routes
 app.use(API_PREFIX, routes);
 app.use(API_PREFIX, routes);
-
 
 // Unknown Routes
 app.use(notFoundMiddleware);

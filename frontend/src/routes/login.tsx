@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Flower2, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -61,9 +61,9 @@ function LoginPage() {
         <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-primary/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-16 size-96 rounded-full bg-secondary/20 blur-3xl" />
         <div className="relative flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Flower2 className="size-6" />
-          </span>
+          <div className="flex shrink-0 items-center justify-center size-11 rounded-xl overflow-hidden bg-primary/10">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+          </div>
           <div>
             <p className="font-display text-lg font-semibold">Vargani CMS</p>
             <p className="text-xs text-muted-foreground">Ganpati Collection Ledger</p>
@@ -91,9 +91,9 @@ function LoginPage() {
           className="w-full max-w-md"
         >
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <Flower2 className="size-5" />
-            </span>
+            <div className="flex shrink-0 items-center justify-center size-10 rounded-xl overflow-hidden bg-primary/10">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+            </div>
             <p className="font-display text-lg font-semibold">Vargani CMS</p>
           </div>
 
