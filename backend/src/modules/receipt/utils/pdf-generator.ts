@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -26,11 +27,68 @@ export class PdfGenerator {
     await fs.writeFile(tempHtmlPath, finalHtml, 'utf-8');
 
     const executablePath = await this.findBrowserExecutablePath();
-    const browser = await puppeteer.launch({
+
+    console.log("--- PUPPETEER RUNTIME DIAGNOSTICS ---");
+    console.log("Current working directory", process.cwd());
+    console.log("NODE_ENV", process.env.NODE_ENV);
+    console.log("Platform", process.platform);
+    console.log("Architecture", process.arch);
+    console.log("Home directory", os.homedir());
+
+    const chromePath = "/opt/render/.cache/puppeteer/chrome/linux-151.0.7922.47/chrome-linux64/chrome";
+    console.log("Checking Chrome path");
+    if (fsSync.existsSync(chromePath)) {
+      console.log("File size", fsSync.statSync(chromePath).size);
+      console.log("Permissions", fsSync.statSync(chromePath).mode);
+      console.log("Directory contents", fsSync.readdirSync(path.dirname(chromePath)));
+    } else {
+      console.log("Chrome path does NOT exist.");
+    }
+
+    if (executablePath) {
+      console.log("Using executable", executablePath);
+    } else {
+      console.log("No executablePath supplied.\nUsing Puppeteer default browser resolution.");
+    }
+
+    const renderCachePath = "/opt/render/.cache";
+    if (fsSync.existsSync(renderCachePath)) {
+      console.log("/opt/render/.cache exists");
+      const listDirSafe = (dir: string) => {
+        if (fsSync.existsSync(dir)) {
+          console.log(`Contents of ${dir}:`, fsSync.readdirSync(dir));
+        } else {
+          console.log(`${dir} does not exist`);
+        }
+      };
+      listDirSafe("/opt/render/.cache");
+      listDirSafe("/opt/render/.cache/puppeteer");
+      listDirSafe("/opt/render/.cache/puppeteer/chrome");
+    } else {
+      console.log("/opt/render/.cache does NOT exist");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    console.log("Puppeteer version:", require("puppeteer/package.json").version);
+    console.log("Node version:", process.version);
+
+    const puppeteerOptions = {
       headless: true,
       ...(executablePath ? { executablePath } : {}),
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--allow-file-access-from-files'],
-    });
+    };
+    
+    console.log("Launching Puppeteer", puppeteerOptions);
+
+    let browser;
+    try {
+      browser = await puppeteer.launch(puppeteerOptions as any);
+    } catch (error: any) {
+      console.error("error.message", error?.message);
+      console.error("error.stack", error?.stack);
+      console.error("error.name", error?.name);
+      throw error;
+    }
 
     try {
       const page = await browser.newPage();
