@@ -18,4 +18,8 @@ export const whatsappConfig = {
     timeout: env.WHATSAPP_TIMEOUT,
 
     defaultCountryCode: env.WHATSAPP_DEFAULT_COUNTRY_CODE,
+
+    templateName: env.WHATSAPP_TEMPLATE_NAME,
+
+    templateLanguage: env.WHATSAPP_TEMPLATE_LANGUAGE,
 } as const;

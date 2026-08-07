@@ -35,6 +35,10 @@ const envSchema = z.object({
   WHATSAPP_DEFAULT_COUNTRY_CODE: z.string(),
 
   WHATSAPP_TIMEOUT: z.coerce.number(),
+
+  WHATSAPP_TEMPLATE_NAME: z.string().default('donation'),
+
+  WHATSAPP_TEMPLATE_LANGUAGE: z.string().default('en'),
 });
 
 const parsed = envSchema.safeParse(process.env);

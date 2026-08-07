@@ -19,6 +19,24 @@ export interface SendDocumentPayload {
     caption?: string;
 
 }
+
+export interface SendTemplatePayload {
+
+    recipient: string;
+
+    templateName: string;
+
+    languageCode: string;
+
+    mediaId: string;
+
+    fileName: string;
+
+    donorName: string;
+
+    amount: string;
+
+}
 export interface MessagingResult {
     success: boolean;
 

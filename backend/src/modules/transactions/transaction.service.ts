@@ -390,16 +390,25 @@ export class TransactionService {
     }
 
     try {
-      const result: MessagingResult = await this.messagingService.sendReceiptDocument(
-        transaction,
-        receiptDocument,
+      const start = Date.now();
+      const mediaId = await this.messagingService.uploadMedia(
+        receiptDocument.buffer,
+        receiptDocument.fileName,
+        receiptDocument.mimeType
+      );
+
+      const result: MessagingResult = await this.messagingService.sendDonationReceipt(
         recipient,
+        mediaId,
+        transaction.donor?.name || 'Devotee',
+        transaction.amount,
+        transaction.receiptNumber
       );
 
       if (!result.success) {
         await this.repository.updateWhatsAppStatus(transactionId, WhatsappStatus.FAILED);
         await this.repository.updateMessageMetadata(transactionId, {
-          providerMediaId: result.providerMediaId,
+          providerMediaId: mediaId,
           whatsappFailureReason: result.error ?? 'WhatsApp delivery failed',
         });
 
@@ -408,24 +417,29 @@ export class TransactionService {
           recipient,
           error: result.error,
           providerName: result.providerName,
-          providerMediaId: result.providerMediaId,
+          providerMediaId: mediaId,
         });
         return;
       }
 
       await this.repository.updateMessageMetadata(transactionId, {
         providerMessageId: result.providerMessageId,
-        providerMediaId: result.providerMediaId,
+        providerMediaId: mediaId,
         whatsappFailureReason: null,
       });
 
       await this.repository.updateWhatsAppStatus(transactionId, WhatsappStatus.SENT);
 
+      const { whatsappConfig } = require('../../config/whatsapp.config');
+
       logger.info('WhatsApp message sent', {
         transactionId,
+        receiptNumber: transaction.receiptNumber,
         recipient,
+        templateName: whatsappConfig.templateName,
+        mediaId,
         providerMessageId: result.providerMessageId,
-        providerMediaId: result.providerMediaId,
+        timeTakenMs: Date.now() - start,
       });
     } catch (error) {
       await this.repository.updateWhatsAppStatus(transactionId, WhatsappStatus.FAILED);

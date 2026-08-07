@@ -25,6 +25,32 @@ export class MessagingService {
     return this.provider.sendDocument(payload);
   }
 
+  async uploadMedia(file: Buffer, fileName: string, mimeType: string): Promise<string> {
+    this.ensureMessagingEnabled();
+
+    return this.provider.uploadMedia(file, fileName, mimeType);
+  }
+
+  async sendDonationReceipt(
+    phone: string,
+    mediaId: string,
+    donorName: string,
+    amount: number,
+    receiptNumber: string
+  ): Promise<MessagingResult> {
+    this.ensureMessagingEnabled();
+
+    return this.provider.sendTemplate({
+      recipient: phone,
+      templateName: whatsappConfig.templateName,
+      languageCode: whatsappConfig.templateLanguage,
+      mediaId,
+      fileName: `Receipt-${receiptNumber}.pdf`,
+      donorName,
+      amount: amount.toString(),
+    });
+  }
+
   async sendReceiptDocument(
     transaction: any,
     receiptDocument: { buffer: Buffer; fileName: string; mimeType: string },

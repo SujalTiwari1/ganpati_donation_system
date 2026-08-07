@@ -6,6 +6,8 @@ import type {
 
     SendTextPayload,
 
+    SendTemplatePayload,
+
 } from "../types";
 
 export interface IMessagingProvider {
@@ -19,6 +21,22 @@ export interface IMessagingProvider {
     sendDocument(
 
         payload: SendDocumentPayload
+
+    ): Promise<MessagingResult>;
+
+    uploadMedia(
+
+        file: Buffer,
+
+        fileName: string,
+
+        mimeType: string
+
+    ): Promise<string>;
+
+    sendTemplate(
+
+        payload: SendTemplatePayload
 
     ): Promise<MessagingResult>;
 

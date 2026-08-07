@@ -1,0 +1,1 @@
+import fs from 'fs'; import { whatsappClient } from './src/modules/messaging/clients'; import { WhatsAppProvider } from './src/modules/messaging/providers'; const provider = new WhatsAppProvider(whatsappClient); provider.uploadMedia(Buffer.from('hello'), 'test.txt', 'text/plain').then(console.log).catch(e = 
